@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0f24;
+  --foreground: #ffffff;
+  --card: #0f1629;
+  --card-foreground: #ffffff;
+  --popover: #0f1629;
+  --popover-foreground: #ffffff;
+  --primary: #5adaff;
+  --primary-foreground: #0a0f24;
+  --secondary: #1a1f35;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1f35;
+  --muted-foreground: #9ca3af;
+  --accent: #ff5af1;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #1a1f35;
+  --ring: #5adaff;
+  --neon-blue: #5adaff;
+  --neon-pink: #ff5af1;
+  --grid-line: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Cyber grid background effect */
+.cyber-grid {
+  background-image: 
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Neon glow effects */
+.neon-glow-blue {
+  box-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue), 0 0 30px var(--neon-blue);
+}
+
+.neon-glow-pink {
+  box-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink), 0 0 30px var(--neon-pink);
+}
+
+/* Animated border effect */
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.neon-border {
+  position: relative;
+  border: 1px solid var(--neon-blue);
+}
+
+.neon-border::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, var(--neon-blue), var(--neon-pink), var(--neon-blue));
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.3;
+  animation: neon-pulse 2s ease-in-out infinite;
+}
