@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/slider";
 
 export default function Timeline() {
   return (
-    <div className="w-full h-40 border-t border-[#5adaff]/20 bg-[#0f1629] p-4">
+    <div className="w-full h-40 border-t invisibleborder-[#5adaff]/20 bg-[#0f1629] p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Clock size={16} className="text-[#5adaff]" />
