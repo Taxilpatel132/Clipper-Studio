@@ -76,3 +76,22 @@ html, body {
   opacity: 0.3;
   animation: neon-pulse 2s ease-in-out infinite;
 }
+/* ===== ToolPanel Thin Scrollbar ===== */
+.thin-scrollbar::-webkit-scrollbar {
+  width: 5px; /* 👈 reduce size here */
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(90, 218, 255, 0.4);
+  border-radius: 10px;
+}
+
+/* Firefox */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 218, 255, 0.4) transparent;
+}
