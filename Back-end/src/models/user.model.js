@@ -20,13 +20,22 @@ const refreshTokenSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema(
   {
-    name: String,
+   
+  name: {
+    type: String,
+   required: true,
+   trim: true,
+    minlength: 1
+  },
 
-    email: {
-      type: String,
-      unique: true,
-      required: true
-    },
+   email: {
+     type: String,
+     unique: true,      
+     required: true,    
+     lowercase: true,    
+     trim: true,
+     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
+   },
 
     password: {
       type: String,
