@@ -1,12 +1,11 @@
 import app from "./app.js";
 import connectDB from "./config/database.js";
 import dotenv from 'dotenv';
-import http from 'http';
 
-const server = http.createServer(app);
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
+
 const startServer = async () => {
   try {
     await connectDB();
