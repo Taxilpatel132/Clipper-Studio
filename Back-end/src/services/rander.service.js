@@ -1,27 +1,57 @@
-import ffmpeg from "fluent-ffmpeg";
+import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { v4 as uuid } from "uuid";
+import ffmpegPath from "ffmpeg-static";
 import Project from "../models/project.model.js";
+
 const normalize = (p) => p.replace(/\\/g, "/");
 
 const trimClip = (input, output, start, end) => {
   return new Promise((resolve, reject) => {
-    const duration = end != null ? end - start : undefined;
-
-    let command = ffmpeg(input).setStartTime(start || 0);
-
-    if (duration) {
-      command = command.setDuration(duration);
+    const args = [];
+    
+    // Start time
+    if (start != null && start > 0) {
+      args.push("-ss", start.toString());
     }
+    
+    // Input
+    args.push("-i", input);
+    
+    // Duration
+    if (end != null) {
+      const duration = end - (start || 0);
+      args.push("-t", duration.toString());
+    }
+    
+    // Codec and quality options
+    args.push(
+      "-c:v", "libx264",
+      "-c:a", "aac",
+      "-preset", "fast",
+      "-crf", "23",
+      "-y",
+      output
+    );
 
-    command
-      .videoCodec("libx264")
-      .audioCodec("aac")
-      .outputOptions(["-preset fast", "-crf 23"])
-      .save(output)
-      .on("end", resolve)
-      .on("error", reject);
+    const ffmpegProcess = spawn(ffmpegPath, args);
+    
+    let stderr = "";
+    
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    
+    ffmpegProcess.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`FFmpeg trim exited with code ${code}: ${stderr}`));
+      }
+    });
+    
+    ffmpegProcess.on("error", reject);
   });
 };
 
@@ -71,17 +101,37 @@ const outputPath = path.resolve("outputs", `${jobId}.mp4`);
   fs.writeFileSync(inputListPath, fileList);
 
   /* 2️⃣ Run FFmpeg */
-await new Promise((resolve, reject) => {
-  ffmpeg()
-    .input(normalize(inputListPath))
-    .inputOptions(["-f concat", "-safe 0"])
-    .videoCodec("libx264")
-    .audioCodec("aac")
-    .outputOptions(["-preset fast", "-crf 23"])
-    .save(normalize(outputPath))
-    .on("end", resolve)
-    .on("error", reject);
-});
+  await new Promise((resolve, reject) => {
+    const args = [
+      "-f", "concat",
+      "-safe", "0",
+      "-i", normalize(inputListPath),
+      "-c:v", "libx264",
+      "-c:a", "aac",
+      "-preset", "fast",
+      "-crf", "23",
+      "-y",
+      normalize(outputPath)
+    ];
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+    
+    let stderr = "";
+    
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    
+    ffmpegProcess.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`FFmpeg concat exited with code ${code}: ${stderr}`));
+      }
+    });
+    
+    ffmpegProcess.on("error", reject);
+  });
 
   /* 3️⃣ Update project status */
   project.status = "completed";

@@ -1,7 +1,8 @@
-import ffmpeg from "fluent-ffmpeg";
+import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { v4 as uuid } from "uuid";
+import ffmpegPath from "ffmpeg-static";
 
 const normalize = (p) => p.replace(/\\/g, "/");
 
@@ -17,16 +18,43 @@ export const extractTimelineFrames = async ({
   fs.mkdirSync(outputDir, { recursive: true });
 
   return new Promise((resolve, reject) => {
-    let command = ffmpeg(normalize(videoPath));
+    const args = [];
+    
+    // Input options
+    if (start != null) {
+      args.push("-ss", start.toString());
+    }
+    
+    args.push("-i", videoPath);
+    
+    // Duration
+    if (end != null) {
+      const duration = end - (start || 0);
+      args.push("-t", duration.toString());
+    }
+    
+    // Video filter for FPS
+    args.push("-vf", `fps=${fps}`);
+    
+    // Output
+    args.push("-y", path.join(outputDir, "frame_%03d.jpg"));
 
-    if (start != null) command = command.setStartTime(start);
-    if (end != null) command = command.setDuration(end - (start || 0));
-
-    command
-      .videoFilters(`fps=${fps}`)
-      .output(path.join(outputDir, "frame_%03d.jpg"))
-      .on("end", () => resolve(outputDir))
-      .on("error", reject)
-      .run();
+    const ffmpegProcess = spawn(ffmpegPath, args);
+    
+    let stderr = "";
+    
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    
+    ffmpegProcess.on("close", (code) => {
+      if (code === 0) {
+        resolve(outputDir);
+      } else {
+        reject(new Error(`FFmpeg exited with code ${code}: ${stderr}`));
+      }
+    });
+    
+    ffmpegProcess.on("error", reject);
   });
 };
