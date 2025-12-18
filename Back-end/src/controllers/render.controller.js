@@ -1,4 +1,5 @@
-import { renderMergeProject } from "../services/rander.service.js";
+import { extractTimelineFrames } from "../services/frame.service.js";
+import { v4 as uuid } from "uuid";
 
 export const renderProjectController = async (req, res) => {
   try {
@@ -21,5 +22,34 @@ export const renderProjectController = async (req, res) => {
     }
 
     res.status(500).json({ message: "Render failed" });
+  }
+};
+
+
+export const uploadPreviewFramesController = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No video uploaded" });
+    }
+
+    const fps = Number(req.body.fps) || 1;
+    const tempId = uuid();
+
+    const framesDir = await extractTimelineFrames({
+      videoPath: req.file.path,
+      fps,
+      tempId
+    });
+
+    res.json({
+      tempId,
+      filename: req.file.originalname,
+      framesDir
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Preview generation failed"
+    });
   }
 };
