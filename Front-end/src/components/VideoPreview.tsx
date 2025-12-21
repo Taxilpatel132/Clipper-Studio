@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import { Play } from "lucide-react";
 import { useEditor } from "@/hooks/useEditor";
-// import { v4 as uuid } from "uuid";
-
 
 interface Props {
   src: string | null;
@@ -15,34 +13,26 @@ export default function VideoPreview({ src, onRemove }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const {
-  isPlaying,
-  currentTime,
-  setCurrentTime,
-  play,
-  pause,
-  setDuration,
-  addClip,
-  clearClips,
-} = useEditor();
-
+    isPlaying,
+    currentTime,
+    setCurrentTime,
+    play,
+    pause,
+    addClip,
+    clips,
+  } = useEditor();
 
   // ▶️ Sync PLAY / PAUSE from store → video
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
-    if (isPlaying) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
+    isPlaying ? video.play().catch(() => {}) : video.pause();
   }, [isPlaying]);
 
   // ▶️ Sync SEEK from store → video
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     if (Math.abs(video.currentTime - currentTime) > 0.05) {
       video.currentTime = currentTime;
     }
@@ -54,26 +44,26 @@ export default function VideoPreview({ src, onRemove }: Props) {
     setCurrentTime(videoRef.current.currentTime);
   };
 
-  // ▶️ Handle metadata loaded
+  // ▶️ Handle metadata loaded (ADD CLIP, DO NOT CLEAR)
   const handleLoadedMetadata = () => {
-  if (!videoRef.current) return;
+    if (!videoRef.current || !src) return;
 
-  const videoDuration = videoRef.current.duration;
+    const videoDuration = videoRef.current.duration;
 
-  setDuration(videoDuration);
+    const lastClipEnd =
+      clips.length === 0
+        ? 0
+        : clips[clips.length - 1].startTime +
+          clips[clips.length - 1].duration;
 
-  // Reset previous clips
-  clearClips();
-
-  // Create main clip
-  addClip({
-    id: crypto.randomUUID(),
-    name: "Main Video",
-    startTime: 0,
-    duration: videoDuration,
-  });
-};
-
+    addClip({
+      id: crypto.randomUUID(),
+      name: `Video ${clips.length + 1}`,
+      src,
+      startTime: lastClipEnd,
+      duration: videoDuration,
+    });
+  };
 
   // ▶️ Toggle play on click
   const handleTogglePlay = () => {
