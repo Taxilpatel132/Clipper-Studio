@@ -96,35 +96,37 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen flex bg-[#0a0f24] cyber-grid">
-      {/* Left Sidebar - Full Height */}
-      <Sidebar onSelectTool={setSelectedTool} />
-      
-      {/* Right Side - Everything except sidebar */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Navbar */}
+    <div className="h-screen overflow-hidden flex flex-col bg-[#0a0f24] cyber-grid">
+      {/* Fixed Top Navbar */}
+      <div className="flex-shrink-0">
         <Navbar />
-        
-        {/* Main Area - Above Timeline */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* ToolPanel - Next to sidebar */}
-          <div className="w-80 bg-[#0f1629] border-r border-[#5adaff]/20 overflow-y-auto">
-            <ToolPanel
-              selectedTool={selectedTool || "video"}
-                
-              onUploadFile={handleUpload}
-              hasVideo={!!videoSrc}
-              onRemoveVideo={handleRemoveVideo}
-            />
-          </div>
-          
-          {/* Video Preview - Center, filling remaining space */}
-          <div className="flex-1 flex items-center justify-center bg-[#0a0f24] p-6">
-            <VideoPreview src={videoSrc} onRemove={handleRemoveVideo}  />
-          </div>
+      </div>
+      
+      {/* Main Content Area - Flexible Height */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Fixed Width */}
+        <div className="flex-shrink-0">
+          <Sidebar onSelectTool={setSelectedTool} />
         </div>
         
-        {/* Timeline - Full width except below sidebar */}
+        {/* Tool Panel - Fixed Width */}
+        <div className="w-80 flex-shrink-0 bg-[#0f1629] border-r border-[#5adaff]/20 overflow-y-auto">
+          <ToolPanel
+            selectedTool={selectedTool || "video"}
+            onUploadFile={handleUpload}
+            hasVideo={!!videoSrc}
+            onRemoveVideo={handleRemoveVideo}
+          />
+        </div>
+        
+        {/* Video Preview - Flexible Width */}
+        <div className="flex-1 flex items-center justify-center bg-[#0a0f24] p-6 overflow-hidden">
+          <VideoPreview src={videoSrc} onRemove={handleRemoveVideo} />
+        </div>
+      </div>
+      
+      {/* Fixed Bottom Timeline */}
+      <div className="flex-shrink-0">
         <Timeline />
       </div>
     </div>

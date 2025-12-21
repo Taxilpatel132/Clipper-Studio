@@ -1,13 +1,11 @@
 "use client";
-
 import { useRef } from "react";
 import { useEditor } from "@/hooks/useEditor";
 import { cn } from "@/lib/utils";
-
 const TIMELINE_SCALE = 100; // px per second
-
 export default function Timeline() {
   const timelineRef = useRef<HTMLDivElement | null>(null);
+  const isDraggingRef = useRef(false);
 
   const {
     currentTime,
@@ -18,15 +16,31 @@ export default function Timeline() {
     selectClip,
   } = useEditor();
 
-  // ▶️ Click empty timeline → seek
-  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // ▶️ Convert mouse X → time
+  const seekFromMouse = (clientX: number) => {
     if (!timelineRef.current || duration === 0) return;
 
     const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const x = clientX - rect.left;
     const time = x / TIMELINE_SCALE;
 
     setCurrentTime(Math.min(Math.max(time, 0), duration));
+  };
+
+  // ▶️ Click empty timeline → seek
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) return;
+    seekFromMouse(e.clientX);
+  };
+
+  // ▶️ Drag playhead
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    seekFromMouse(e.clientX);
+  };
+
+  const stopDragging = () => {
+    isDraggingRef.current = false;
   };
 
   const playheadLeft = currentTime * TIMELINE_SCALE;
@@ -43,7 +57,10 @@ export default function Timeline() {
         <div
           ref={timelineRef}
           onClick={handleTimelineClick}
-          className="relative h-20 bg-[#0a0f24] rounded-md min-w-full"
+          onMouseMove={handleMouseMove}
+          onMouseUp={stopDragging}
+          onMouseLeave={stopDragging}
+          className="relative h-20 bg-[#0a0f24] rounded-md min-w-full cursor-pointer"
           style={{
             width: Math.max(duration * TIMELINE_SCALE, 800),
           }}
@@ -71,7 +88,7 @@ export default function Timeline() {
               <div
                 key={clip.id}
                 onClick={(e) => {
-                  e.stopPropagation(); // ⛔ prevent seek
+                  e.stopPropagation();
                   selectClip(clip.id);
                 }}
                 className={cn(
@@ -87,9 +104,13 @@ export default function Timeline() {
             );
           })}
 
-          {/* Playhead */}
+          {/* Draggable Playhead */}
           <div
-            className="absolute top-0 h-full w-[2px] bg-red-500 pointer-events-none"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              isDraggingRef.current = true;
+            }}
+            className="absolute top-0 h-full w-[3px] bg-red-500 cursor-ew-resize"
             style={{ left: playheadLeft }}
           />
         </div>
