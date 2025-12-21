@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
-import VideoPreview from "@/components/VideoPreview";
-import Timeline from "@/components/Timeline";
-import ToolPanel from "@/components/ToolPanel";
+import Navbar from "../components/Navbar";
+import Sidebar from "../components/Sidebar";
+import VideoPreview from "../components/VideoPreview";
+import Timeline from "../components/Timeline";
+import ToolPanel from "../components/ToolPanel";
 
 export default function Home() {
   const [selectedTool, setSelectedTool] = useState<string | null>("video");
