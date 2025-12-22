@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { useEditor } from "@/hooks/useEditor";
 
 interface Props {
-  src: string | null;
+  newVideoSrc: string | null;
   onRemove?: () => void;
 }
 
-export default function VideoPreview({ src, onRemove }: Props) {
+export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [currentClipSrc, setCurrentClipSrc] = useState<string | null>(null);
 
   const {
     isPlaying,
@@ -22,31 +23,93 @@ export default function VideoPreview({ src, onRemove }: Props) {
     clips,
   } = useEditor();
 
+  // ▶️ Determine which clip should be playing based on current time OR show newly uploaded video
+  useEffect(() => {
+    // If there's a new video uploaded, show it immediately
+    if (newVideoSrc) {
+      setCurrentClipSrc(newVideoSrc);
+      return;
+    }
+
+    // If no clips exist, show nothing
+    if (clips.length === 0) {
+      setCurrentClipSrc(null);
+      return;
+    }
+
+    // Find the clip that should be playing at the current time
+    for (const clip of clips) {
+      const clipStart = clip.startTime;
+      const clipEnd = clip.startTime + clip.duration;
+      
+      if (currentTime >= clipStart && currentTime < clipEnd) {
+        if (currentClipSrc !== clip.src) {
+          setCurrentClipSrc(clip.src);
+        }
+        return;
+      }
+    }
+    
+    // If no clip is found, show the last uploaded video or null
+    setCurrentClipSrc(clips.length > 0 ? clips[clips.length - 1].src : null);
+  }, [currentTime, clips, currentClipSrc, newVideoSrc]);
+
+  // ▶️ Sync video source when clip changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentClipSrc) return;
+    
+    // Only change source if it's different
+    if (video.src !== currentClipSrc) {
+      video.src = currentClipSrc;
+    }
+  }, [currentClipSrc]);
+
+  // ▶️ Sync video time with the clip's relative time
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentClipSrc) return;
+    
+    // Find the current clip
+    const currentClip = clips.find(clip => clip.src === currentClipSrc);
+    if (!currentClip) return;
+    
+    // Calculate relative time within the clip
+    const relativeTime = Math.max(0, currentTime - currentClip.startTime);
+    
+    if (Math.abs(video.currentTime - relativeTime) > 0.1) {
+      video.currentTime = relativeTime;
+    }
+  }, [currentTime, currentClipSrc, clips]);
   // ▶️ Sync PLAY / PAUSE from store → video
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !currentClipSrc) return;
     isPlaying ? video.play().catch(() => {}) : video.pause();
-  }, [isPlaying]);
+  }, [isPlaying, currentClipSrc]);
 
-  // ▶️ Sync SEEK from store → video
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (Math.abs(video.currentTime - currentTime) > 0.05) {
-      video.currentTime = currentTime;
-    }
-  }, [currentTime]);
+  // ▶️ Sync SEEK from store → video (removed because now handled above)
 
-  // ▶️ Handle time update (video → store)
+  // ▶️ Handle time update (video → store) - Update global time based on clip position
   const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    setCurrentTime(videoRef.current.currentTime);
+    if (!videoRef.current || !currentClipSrc) return;
+    
+    // Find the current clip
+    const currentClip = clips.find(clip => clip.src === currentClipSrc);
+    if (!currentClip) return;
+    
+    // Calculate global time (clip start + video current time)
+    const globalTime = currentClip.startTime + videoRef.current.currentTime;
+    setCurrentTime(globalTime);
   };
 
   // ▶️ Handle metadata loaded (ADD CLIP, DO NOT CLEAR)
   const handleLoadedMetadata = () => {
-    if (!videoRef.current || !src) return;
+    if (!videoRef.current || !currentClipSrc) return;
+
+    // Check if this video is already in the clips to avoid duplicates
+    const existingClip = clips.find(clip => clip.src === currentClipSrc);
+    if (existingClip) return;
 
     const videoDuration = videoRef.current.duration;
 
@@ -59,7 +122,7 @@ export default function VideoPreview({ src, onRemove }: Props) {
     addClip({
       id: crypto.randomUUID(),
       name: `Video ${clips.length + 1}`,
-      src,
+      src: currentClipSrc,
       startTime: lastClipEnd,
       duration: videoDuration,
     });
@@ -67,17 +130,17 @@ export default function VideoPreview({ src, onRemove }: Props) {
 
   // ▶️ Toggle play on click
   const handleTogglePlay = () => {
-    if (!src) return;
+    if (!currentClipSrc) return;
     isPlaying ? pause() : play();
   };
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-black rounded-xl overflow-hidden">
-      {src ? (
+      {currentClipSrc ? (
         <>
           <video
             ref={videoRef}
-            src={src}
+            src={currentClipSrc}
             className="w-full h-full object-contain"
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}

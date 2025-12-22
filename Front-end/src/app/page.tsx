@@ -1,98 +1,32 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import VideoPreview from "../components/VideoPreview";
 import Timeline from "../components/Timeline";
 import ToolPanel from "../components/ToolPanel";
+import { useEditor } from "@/hooks/useEditor";
 
 export default function Home() {
   const [selectedTool, setSelectedTool] = useState<string | null>("video");
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [newVideoSrc, setNewVideoSrc] = useState<string | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (videoSrc) {
-        URL.revokeObjectURL(videoSrc);
-      }
-    };
-  }, [videoSrc]);
+  const { clearClips, clips } = useEditor();
 
   const handleUpload = (file: File | null) => {
     if (!file) return;
 
-    if (videoSrc) {
-      URL.revokeObjectURL(videoSrc);
-    }
-
+    // Create URL for the new video and pass it to VideoPreview
     const url = URL.createObjectURL(file);
-    setVideoSrc(url);
+    setNewVideoSrc(url);
+    
+    // Clear the new video src after a short delay to allow VideoPreview to process it
+    setTimeout(() => setNewVideoSrc(null), 100);
   };
 
   const handleRemoveVideo = () => {
-    if (videoSrc) {
-      URL.revokeObjectURL(videoSrc);
-      setVideoSrc(null);
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-    }
-  };
-
-  // Attach video element listeners for play/pause, duration, and time updates
-  const attachVideoListeners = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime || 0);
-    const handleLoaded = () => setDuration(video.duration || 0);
-    const handlePlayState = () => setIsPlaying(!video.paused);
-
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    video.addEventListener("loadedmetadata", handleLoaded);
-    video.addEventListener("play", handlePlayState);
-    video.addEventListener("pause", handlePlayState);
-
-    return () => {
-      video.removeEventListener("timeupdate", handleTimeUpdate);
-      video.removeEventListener("loadedmetadata", handleLoaded);
-      video.removeEventListener("play", handlePlayState);
-      video.removeEventListener("pause", handlePlayState);
-    };
-  };
-
-  useEffect(() => {
-    const cleanup = attachVideoListeners();
-    return cleanup;
-  }, [videoSrc]);
-
-  // Playback control handlers
-  const togglePlayPause = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      await video.play();
-    } else {
-      video.pause();
-    }
-  };
-
-  const seekBy = (deltaSeconds: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    const next = Math.min(Math.max(video.currentTime + deltaSeconds, 0), video.duration || Infinity);
-    video.currentTime = next;
-  };
-
-  const formatTime = (value: number) => {
-    if (!Number.isFinite(value)) return "00:00";
-    const minutes = Math.floor(value / 60);
-    const seconds = Math.floor(value % 60);
-    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    // Clear all clips
+    clearClips();
   };
 
   return (
@@ -114,14 +48,14 @@ export default function Home() {
           <ToolPanel
             selectedTool={selectedTool || "video"}
             onUploadFile={handleUpload}
-            hasVideo={!!videoSrc}
+            hasVideo={clips.length > 0}
             onRemoveVideo={handleRemoveVideo}
           />
         </div>
         
         {/* Video Preview - Flexible Width */}
         <div className="flex-1 flex items-center justify-center bg-[#0a0f24] p-6 overflow-hidden">
-          <VideoPreview src={videoSrc} onRemove={handleRemoveVideo} />
+          <VideoPreview newVideoSrc={newVideoSrc} onRemove={handleRemoveVideo} />
         </div>
       </div>
       
