@@ -88,9 +88,6 @@ export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
     isPlaying ? video.play().catch(() => {}) : video.pause();
   }, [isPlaying, currentClipSrc]);
 
-  // ▶️ Sync SEEK from store → video (removed because now handled above)
-
-  // ▶️ Handle time update (video → store) - Update global time based on clip position
   const handleTimeUpdate = () => {
     if (!videoRef.current || !currentClipSrc) return;
     
