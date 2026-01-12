@@ -5,11 +5,10 @@ import { Play } from "lucide-react";
 import { useEditor } from "@/hooks/useEditor";
 
 interface Props {
-  newVideoSrc: string | null;
   onRemove?: () => void;
 }
 
-export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
+export default function VideoPreview({ onRemove }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [currentClipSrc, setCurrentClipSrc] = useState<string | null>(null);
 
@@ -21,13 +20,14 @@ export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
     pause,
     addClip,
     clips,
+    pendingVideoSrc,
   } = useEditor();
 
   // ▶️ Determine which clip should be playing based on current time OR show newly uploaded video
   useEffect(() => {
     // If there's a new video uploaded, show it immediately
-    if (newVideoSrc) {
-      setCurrentClipSrc(newVideoSrc);
+    if (pendingVideoSrc) {
+      setCurrentClipSrc(pendingVideoSrc);
       return;
     }
 
@@ -38,21 +38,21 @@ export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
     }
 
     // Find the clip that should be playing at the current time
-    for (const clip of clips) {
-      const clipStart = clip.startTime;
-      const clipEnd = clip.startTime + clip.duration;
-      
-      if (currentTime >= clipStart && currentTime < clipEnd) {
-        if (currentClipSrc !== clip.src) {
-          setCurrentClipSrc(clip.src);
-        }
-        return;
-      }
+   for (const clip of clips) {
+  const playStart = clip.startTime + clip.trimStart;
+  const playEnd = clip.startTime + clip.duration - clip.trimEnd;
+
+  if (currentTime >= playStart && currentTime < playEnd) {
+    if (currentClipSrc !== clip.src) {
+      setCurrentClipSrc(clip.src);
     }
-    
+    return;
+  }
+}
+
     // If no clip is found, show the last uploaded video or null
     setCurrentClipSrc(clips.length > 0 ? clips[clips.length - 1].src : null);
-  }, [currentTime, clips, currentClipSrc, newVideoSrc]);
+  }, [currentTime, clips, currentClipSrc, pendingVideoSrc]);
 
   // ▶️ Sync video source when clip changes
   useEffect(() => {
@@ -75,11 +75,25 @@ export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
     if (!currentClip) return;
     
     // Calculate relative time within the clip
-    const relativeTime = Math.max(0, currentTime - currentClip.startTime);
-    
-    if (Math.abs(video.currentTime - relativeTime) > 0.1) {
-      video.currentTime = relativeTime;
-    }
+   const playStart = currentClip.startTime + currentClip.trimStart;
+const playEnd =
+  currentClip.startTime +
+  currentClip.duration -
+  currentClip.trimEnd;
+
+// Clamp global time into soft-trim window
+let safeTime = currentTime;
+
+if (safeTime < playStart) safeTime = playStart;
+if (safeTime >= playEnd) safeTime = playEnd - 0.01;
+
+// Map global → video time
+const relativeTime = safeTime - playStart;
+
+if (Math.abs(video.currentTime - relativeTime) > 0.1) {
+  video.currentTime = relativeTime;
+}
+
   }, [currentTime, currentClipSrc, clips]);
   // ▶️ Sync PLAY / PAUSE from store → video
   useEffect(() => {
@@ -99,8 +113,24 @@ export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
     if (!currentClip) return;
     
     // Calculate global time (clip start + video current time)
-    const globalTime = currentClip.startTime + videoRef.current.currentTime;
-    setCurrentTime(globalTime);
+   const playStart = currentClip.startTime + currentClip.trimStart;
+
+// Global time = trim start + relative video time
+const globalTime =
+  playStart + videoRef.current.currentTime;
+
+setCurrentTime(globalTime);
+const playEnd =
+  currentClip.startTime +
+  currentClip.duration -
+  currentClip.trimEnd;
+
+if (globalTime >= playEnd) {
+  pause(); // or later: jump to next clip
+  setCurrentTime(playEnd);
+  return;
+}
+
   };
 
   // ▶️ Handle metadata loaded (ADD CLIP, DO NOT CLEAR)
@@ -119,13 +149,18 @@ export default function VideoPreview({ newVideoSrc, onRemove }: Props) {
         : clips[clips.length - 1].startTime +
           clips[clips.length - 1].duration;
 
-    addClip({
-      id: crypto.randomUUID(),
-      name: `Video ${clips.length + 1}`,
-      src: currentClipSrc,
-      startTime: lastClipEnd,
-      duration: videoDuration,
-    });
+   addClip({
+  id: crypto.randomUUID(),
+  name: `Video ${clips.length + 1}`,
+  src: currentClipSrc,
+  startTime: lastClipEnd,
+  duration: videoDuration,
+
+  // 👇 REQUIRED for soft trim system
+  trimStart: 0,
+  trimEnd: 0,
+});
+
   };
 
   // ▶️ Toggle play on click

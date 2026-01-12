@@ -1,0 +1,2 @@
+A free, browser-based video editor for students & creators
+powered by smart automation, not expensive AI by default
