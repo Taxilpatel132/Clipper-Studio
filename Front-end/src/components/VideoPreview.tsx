@@ -168,7 +168,7 @@ if (globalTime >= playEnd) {
     if (!currentClipSrc) return;
     isPlaying ? pause() : play();
   };
-
+  
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-black rounded-xl overflow-hidden">
       {currentClipSrc ? (

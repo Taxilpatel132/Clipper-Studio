@@ -28,6 +28,10 @@ interface EditorState {
   // New upload state
   pendingVideoSrc: string | null;
 
+  // Enhanced drag state
+  dragOffset: number;
+  dropIndicatorPosition: number | null;
+
   setProject: (id: string, name: string) => void;
 
   play: () => void;
@@ -57,6 +61,10 @@ applyTrim: (clipId: string) => void;
 setDraggingClip: (id: string | null) => void;
 reorderClips: (fromIndex: number, toIndex: number) => void;
 
+  // Enhanced drag methods
+  setDragOffset: (offset: number) => void;
+  setDropIndicator: (position: number | null) => void;
+  repositionClip: (clipId: string, newStartTime: number) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -74,6 +82,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeClipId: null,
   zoom: 1,
   pendingVideoSrc: null,
+
+  // Enhanced drag state
+  dragOffset: 0,
+  dropIndicatorPosition: null,
 
   setProject: (id, name) =>
     set({ projectId: id, projectName: name }),
@@ -195,32 +207,38 @@ setTrimEnd: (clipId, value) =>
   
   setDraggingClip: (id) => set({ draggingClipId: id }),
 
-reorderClips: (from, to) =>
-  set((state) => {
-    const clips = [...state.clips].sort(
-      (a, b) => a.startTime - b.startTime
-    );
+  setDragOffset: (offset) => set({ dragOffset: offset }),
+  
+  setDropIndicator: (position) => set({ dropIndicatorPosition: position }),
+  
+repositionClip: (clipId, newStartTime) =>
+  set((state) => ({
+    clips: state.clips.map((clip) =>
+      clip.id === clipId
+        ? { ...clip, startTime: newStartTime }
+        : clip
+    ),
+  })),
 
-    const [moved] = clips.splice(from, 1);
-    clips.splice(to, 0, moved);
+  reorderClips: (from, to) =>
+    set((state) => {
+      const sortedClips = [...state.clips].sort((a, b) => a.startTime - b.startTime);
+      const [movedClip] = sortedClips.splice(from, 1);
+      sortedClips.splice(to, 0, movedClip);
 
-    // 🔥 Recalculate startTime sequentially
-    let currentTime = 0;
-    const updated = clips.map((clip) => {
-      const newClip = {
-        ...clip,
-        startTime: currentTime,
+      // Recalculate positions sequentially
+      let currentTime = 0;
+      const reorderedClips = sortedClips.map((clip) => {
+        const newClip = { ...clip, startTime: currentTime };
+        currentTime += clip.duration;
+        return newClip;
+      });
+
+      return {
+        clips: reorderedClips,
+        activeClipId: movedClip.id,
+        duration: currentTime
       };
-      currentTime += clip.duration;
-      return newClip;
-    });
-
-    return {
-      clips: updated,
-      activeClipId: moved.id,
-    };
-  }),
-
-
-
+    }),
+    
 }));
