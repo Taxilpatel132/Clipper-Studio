@@ -38,7 +38,7 @@ interface EditorState {
   pause: () => void;
   togglePlay: () => void;
 
-  setCurrentTime: (time: number) => void;
+  setCurrentTime: (time: number | ((t: number) => number)) => void;
   setDuration: (duration: number) => void;
 
   addClip: (clip: TimelineClip) => void;
@@ -96,7 +96,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => ({ isPlaying: !state.isPlaying })),
 
   setCurrentTime: (time) =>
-    set({ currentTime: Math.max(0, time) }),
+  set((state) => ({
+    currentTime:
+      typeof time === "function"
+        ? Math.max(0, time(state.currentTime))
+        : Math.max(0, time),
+  })),
+
 
   setDuration: (duration) =>
     set({ duration: Math.max(0, duration) }),
@@ -107,8 +113,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...state.clips,
       {
         ...clip,
-       trimStart: 1,
-       trimEnd: 1,
+       trimStart: 0,
+       trimEnd: 0,
       },
     ],
     activeClipId: clip.id,
@@ -135,26 +141,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setZoom: (zoom) =>
     set({ zoom: Math.min(4, Math.max(0.25, zoom)) }),
 
-  uploadVideo: async (file: File): Promise<boolean> => {
-    if (!file.type.startsWith("video/")) {
-      return false;
-    }
+ uploadVideo: async (file: File): Promise<boolean> => {
+  if (!file.type.startsWith("video/")) return false;
 
-    try {
-      const url = URL.createObjectURL(file);
-      set({ pendingVideoSrc: url });
-      
-      // Clear pending video after a short delay to allow components to process it
-      setTimeout(() => {
-        set({ pendingVideoSrc: null });
-      }, 100);
-      
-      return true;
-    } catch (error) {
-      console.error("Failed to upload video:", error);
-      return false;
-    }
-  },
+  try {
+    const url = URL.createObjectURL(file);
+    set({ pendingVideoSrc: url });
+    return true;
+  } catch (error) {
+    console.error("Failed to upload video:", error);
+    return false;
+  }
+},
+
 
   clearPendingVideo: () => set({ pendingVideoSrc: null }),
   setTrimStart: (clipId, value) =>

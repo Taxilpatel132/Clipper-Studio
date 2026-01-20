@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState ,useMemo} from "react";
 import { Play } from "lucide-react";
 import { useEditor } from "@/hooks/useEditor";
+import {
+  buildTimelineWithGaps,
+  getActiveSegment,
+} from "@/editor/timeline/timelineSegments";
 
 interface Props {
   onRemove?: () => void;
@@ -21,23 +25,21 @@ export default function VideoPreview({ onRemove }: Props) {
     addClip,
     clips,
     pendingVideoSrc,
+    clearPendingVideo,  
   } = useEditor();
 
-  // ▶️ Determine which clip should be playing based on current time OR show newly uploaded video
+ 
   useEffect(() => {
-    // If there's a new video uploaded, show it immediately
     if (pendingVideoSrc) {
       setCurrentClipSrc(pendingVideoSrc);
       return;
     }
 
-    // If no clips exist, show nothing
     if (clips.length === 0) {
       setCurrentClipSrc(null);
       return;
     }
 
-    // Find the clip that should be playing at the current time
    for (const clip of clips) {
   const playStart = clip.startTime + clip.trimStart;
   const playEnd = clip.startTime + clip.duration - clip.trimEnd;
@@ -49,10 +51,13 @@ export default function VideoPreview({ onRemove }: Props) {
     return;
   }
 }
-
+  
     // If no clip is found, show the last uploaded video or null
     setCurrentClipSrc(clips.length > 0 ? clips[clips.length - 1].src : null);
   }, [currentTime, clips, currentClipSrc, pendingVideoSrc]);
+  const togglePlay = () => {
+  isPlaying ? pause() : play();
+};
 
   // ▶️ Sync video source when clip changes
   useEffect(() => {
@@ -149,57 +154,111 @@ if (globalTime >= playEnd) {
         : clips[clips.length - 1].startTime +
           clips[clips.length - 1].duration;
 
-   addClip({
+ addClip({
   id: crypto.randomUUID(),
   name: `Video ${clips.length + 1}`,
   src: currentClipSrc,
   startTime: lastClipEnd,
   duration: videoDuration,
-
-  // 👇 REQUIRED for soft trim system
   trimStart: 0,
   trimEnd: 0,
 });
 
+// ✅ clear upload preview ONLY after clip is added
+clearPendingVideo();
+
+
   };
 
-  // ▶️ Toggle play on click
   const handleTogglePlay = () => {
     if (!currentClipSrc) return;
     isPlaying ? pause() : play();
   };
-  
-  return (
-    <div className="relative w-full h-full flex items-center justify-center bg-black rounded-xl overflow-hidden">
-      {currentClipSrc ? (
-        <>
-          <video
-            ref={videoRef}
-            src={currentClipSrc}
-            className="w-full h-full object-contain"
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onClick={handleTogglePlay}
-          />
+  const timelineSegments = useMemo(
+  () => buildTimelineWithGaps(clips),
+  [clips]
+);
+const activeSegment = useMemo(
+  () => getActiveSegment(timelineSegments, currentTime),
+  [timelineSegments, currentTime]
+);
+useEffect(() => {
+  if (!isPlaying) return;
+  if (!activeSegment || activeSegment.type !== "gap") return;
 
-          {!isPlaying && (
-            <button
-              onClick={handleTogglePlay}
-              className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition"
-            >
-              <Play className="w-16 h-16 text-white opacity-80" />
-            </button>
-          )}
-        </>
-      ) : (
-        <div
-          className="flex flex-col items-center justify-center text-muted-foreground cursor-pointer"
-          onClick={onRemove}
+  let raf: number;
+  let last = performance.now();
+
+  const tick = (now: number) => {
+    const delta = (now - last) / 1000;
+    last = now;
+
+    setCurrentTime((t) => t + delta);
+    raf = requestAnimationFrame(tick);
+  };
+
+  raf = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(raf);
+}, [activeSegment, isPlaying, setCurrentTime]);
+
+   console.log("Timeline Segments:", timelineSegments);
+   console.log("Active Segment:", activeSegment);
+   console.log({ clips });
+   console.log("Current Clip Src:", currentClipSrc);
+
+  return (
+    <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
+
+  {/* 1️⃣ UPLOAD PREVIEW (BOOTSTRAP CLIP) */}
+  {pendingVideoSrc && (
+    <video
+      ref={videoRef}
+      src={pendingVideoSrc}
+      className="w-full h-full object-contain"
+      onLoadedMetadata={handleLoadedMetadata}
+    />
+  )}
+
+  {/* 2️⃣ CLIP PLAYBACK */}
+  {!pendingVideoSrc && activeSegment?.type === "clip" && (
+    <>
+      <video
+        ref={videoRef}
+        src={activeSegment.clip.src}
+        className="w-full h-full object-contain"
+        onTimeUpdate={handleTimeUpdate}
+        onClick={togglePlay}
+      />
+
+      {!isPlaying && (
+        <button
+          onClick={togglePlay}
+          className="absolute inset-0 flex items-center justify-center bg-black/30"
         >
-          <p className="text-lg font-medium">Video Preview</p>
-          <p className="text-sm opacity-70">Upload a video to get started</p>
-        </div>
+          <Play className="w-16 h-16 text-white opacity-80" />
+        </button>
       )}
+    </>
+  )}
+
+  {/* 3️⃣ GAP SEGMENT */}
+  {!pendingVideoSrc && activeSegment?.type === "gap" && (
+    <div className="absolute inset-0 flex items-center justify-center bg-black">
+      <span className="text-white/40 text-sm">Empty segment</span>
     </div>
+  )}
+
+  {/* 4️⃣ EMPTY STATE */}
+  {!pendingVideoSrc && !activeSegment && clips.length === 0 && (
+    <div
+      className="flex flex-col items-center justify-center text-muted-foreground cursor-pointer"
+      onClick={onRemove}
+    >
+      <p className="text-lg font-medium">Video Preview</p>
+      <p className="text-sm opacity-70">Upload a video to get started</p>
+    </div>
+  )}
+</div>
+
   );
 }
