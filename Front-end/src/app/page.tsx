@@ -9,23 +9,19 @@ import { useEditor } from "@/hooks/useEditor";
 
 export default function Home() {
   const [selectedTool, setSelectedTool] = useState<string | null>("video");
-  const [newVideoSrc, setNewVideoSrc] = useState<string | null>(null);
 
-  const { clearClips, clips } = useEditor();
+  const { clearClips, clips, uploadVideo } = useEditor();
 
-  const handleUpload = (file: File | null) => {
+  const handleUpload = async (file: File) => {
     if (!file) return;
-
-    // Create URL for the new video and pass it to VideoPreview
-    const url = URL.createObjectURL(file);
-    setNewVideoSrc(url);
     
-    // Clear the new video src after a short delay to allow VideoPreview to process it
-    setTimeout(() => setNewVideoSrc(null), 100);
+    const success = await uploadVideo(file);
+    if (!success) {
+      alert("Please upload a valid video file.");
+    }
   };
 
   const handleRemoveVideo = () => {
-    // Clear all clips
     clearClips();
   };
 
@@ -55,7 +51,7 @@ export default function Home() {
         
         {/* Video Preview - Flexible Width */}
         <div className="flex-1 flex items-center justify-center bg-[#0a0f24] p-6 overflow-hidden">
-          <VideoPreview newVideoSrc={newVideoSrc} onRemove={handleRemoveVideo} />
+          <VideoPreview onRemove={handleRemoveVideo} />
         </div>
       </div>
       
