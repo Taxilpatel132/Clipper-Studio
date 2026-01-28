@@ -99,9 +99,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   set((state) => ({
     currentTime:
       typeof time === "function"
-        ? Math.max(0, time(state.currentTime))
-        : Math.max(0, time),
+        ? time(state.currentTime)
+        : time,
   })),
+
 
 
   setDuration: (duration) =>
@@ -211,13 +212,32 @@ setTrimEnd: (clipId, value) =>
   setDropIndicator: (position) => set({ dropIndicatorPosition: position }),
   
 repositionClip: (clipId, newStartTime) =>
-  set((state) => ({
-    clips: state.clips.map((clip) =>
+  set((state) => {
+    const updated = state.clips.map((clip) =>
       clip.id === clipId
         ? { ...clip, startTime: newStartTime }
         : clip
-    ),
-  })),
+    );
+
+    // 🔑 Sort clips by timeline position
+    const sorted = [...updated].sort(
+      (a, b) => a.startTime - b.startTime
+    );
+
+    // 🔑 Recalculate timeline duration
+    const duration = Math.max(
+      0,
+      ...sorted.map(
+        (c) => c.startTime + c.duration
+      )
+    );
+
+    return {
+      clips: sorted,
+      duration,
+    };
+  }),
+
 
   reorderClips: (from, to) =>
     set((state) => {
