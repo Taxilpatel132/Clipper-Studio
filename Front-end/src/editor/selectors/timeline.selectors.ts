@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { useEditor } from "@/hooks/useEditor";
+import { useEditorStore } from "@/editor/store/editor.store";
 import { buildTimelineWithGaps, getActiveSegment, getTotalDuration } from "@/editor/engine";
 
 /**
  * Get timeline segments with gaps
  */
 export function useTimelineSegments() {
-  const { clips } = useEditor();
+  const clips = useEditorStore((state) => state.clips);
 
   return useMemo(() => buildTimelineWithGaps(clips), [clips]);
 }
@@ -15,7 +15,7 @@ export function useTimelineSegments() {
  * Get active segment at current playhead position
  */
 export function useActiveSegment() {
-  const { currentTime } = useEditor();
+  const currentTime = useEditorStore((state) => state.currentTime);
   const segments = useTimelineSegments();
 
   return useMemo(
@@ -25,10 +25,10 @@ export function useActiveSegment() {
 }
 
 /**
- * Get total timeline duration
+ * Get total timeline duration (calculated from clips)
  */
 export function useTotalDuration() {
-  const { clips } = useEditor();
+  const clips = useEditorStore((state) => state.clips);
 
   return useMemo(() => getTotalDuration(clips), [clips]);
 }
@@ -45,6 +45,17 @@ export function useIsInGap() {
  * Check if timeline is empty
  */
 export function useIsTimelineEmpty() {
-  const { clips } = useEditor();
+  const clips = useEditorStore((state) => state.clips);
   return clips.length === 0;
+}
+
+/**
+ * Get current playback state
+ */
+export function usePlaybackState() {
+  const isPlaying = useEditorStore((state) => state.isPlaying);
+  const currentTime = useEditorStore((state) => state.currentTime);
+  const duration = useEditorStore((state) => state.duration);
+
+  return { isPlaying, currentTime, duration };
 }

@@ -4,11 +4,12 @@ import { useRef, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/editor/store/editor.store";
 
+// ✅ NEW: Import from organized folders (optional - for future use)
+import { formatTime } from "@/editor/engine";
+
 import type { TimelineClip } from "@/editor/store/editor.store";
 
-
 const BASE_PX_PER_SECOND = 100;
-
 const SNAP_THRESHOLD = 10; // pixels for snapping
 
 export default function Timeline() {
@@ -48,27 +49,27 @@ export default function Timeline() {
     reorderClips,
     isPlaying,
     zoom,
-     play, 
-     pause
+    play,
+    pause,
   } = useEditorStore();
 
-   const pxPerSecond = BASE_PX_PER_SECOND * zoom;
+  const pxPerSecond = BASE_PX_PER_SECOND * zoom;
   const TIMELINE_SCALE = pxPerSecond;
+
   // Helper functions
- const getTimeFromX = useCallback(
-  (clientX: number) => {
-    if (!timelineRef.current) return 0;
+  const getTimeFromX = useCallback(
+    (clientX: number) => {
+      if (!timelineRef.current) return 0;
 
-    const rect = timelineRef.current.getBoundingClientRect();
-    const scrollLeft = timelineRef.current.scrollLeft;
+      const rect = timelineRef.current.getBoundingClientRect();
+      const scrollLeft = timelineRef.current.scrollLeft;
 
-    const x = clientX - rect.left + scrollLeft;
+      const x = clientX - rect.left + scrollLeft;
 
-    return Math.max(0, x / pxPerSecond);
-  },
-  [pxPerSecond]
-);
-
+      return Math.max(0, x / pxPerSecond);
+    },
+    [pxPerSecond]
+  );
 
   const clampTimeToSoftTrim = useCallback(
     (time: number) => {
@@ -100,16 +101,13 @@ export default function Timeline() {
       });
 
       // Find closest snap point
-      const closest = snapPoints.reduce(
-        (prev, curr) =>
-          Math.abs(curr - targetTime) < Math.abs(prev - targetTime)
-            ? curr
-            : prev
+      const closest = snapPoints.reduce((prev, curr) =>
+        Math.abs(curr - targetTime) < Math.abs(prev - targetTime) ? curr : prev
       );
 
       return Math.abs(closest - targetTime) <= threshold ? closest : targetTime;
     },
-    [clips]
+    [clips, TIMELINE_SCALE]
   );
 
   // Playhead dragging
@@ -160,7 +158,7 @@ export default function Timeline() {
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [setTrimStart, setTrimEnd, setMode]);
+  }, [setTrimStart, setTrimEnd, setMode, TIMELINE_SCALE]);
 
   // Clip dragging with repositioning
   const handleClipDrag = useCallback(
@@ -182,16 +180,15 @@ export default function Timeline() {
       };
 
       const onUp = (e: MouseEvent) => {
-      const finalDeltaX = e.clientX - dragStartXRef.current;
-const finalDeltaTime = finalDeltaX / TIMELINE_SCALE;
+        const finalDeltaX = e.clientX - dragStartXRef.current;
+        const finalDeltaTime = finalDeltaX / TIMELINE_SCALE;
 
-const finalStartTime = Math.max(
-  0,
-  dragStartTimeRef.current + finalDeltaTime
-);
+        const finalStartTime = Math.max(
+          0,
+          dragStartTimeRef.current + finalDeltaTime
+        );
 
-repositionClip(clipId, finalStartTime);
-
+        repositionClip(clipId, finalStartTime);
 
         setDragOffset(0);
         setDropIndicator(null);
@@ -213,7 +210,7 @@ repositionClip(clipId, finalStartTime);
       repositionClip,
       setDraggingClip,
       setMode,
-      dropIndicatorPosition,
+      TIMELINE_SCALE,
     ]
   );
 
@@ -239,7 +236,7 @@ repositionClip(clipId, finalStartTime);
     e: React.MouseEvent,
     clipId: string,
     type: "start" | "end",
-    clip: any
+    clip: TimelineClip
   ) => {
     e.stopPropagation();
     setMode("trimming");
@@ -254,111 +251,93 @@ repositionClip(clipId, finalStartTime);
     handleTrimDrag();
   };
 
-const getClipAtTime = useCallback(
-  (time: number) => {
-    return clips.find((clip) => {
-      const playStart = clip.startTime + clip.trimStart;
-      const playEnd =
-        clip.startTime + clip.duration - clip.trimEnd;
+  const getClipAtTime = useCallback(
+    (time: number) => {
+      return clips.find((clip) => {
+        const playStart = clip.startTime + clip.trimStart;
+        const playEnd = clip.startTime + clip.duration - clip.trimEnd;
 
-      return time > playStart && time < playEnd;
+        return time > playStart && time < playEnd;
+      });
+    },
+    [clips]
+  );
+
+  const splitClipAtCurrentTime = useCallback(() => {
+    const clip = getClipAtTime(currentTime);
+    if (!clip) return; // gap or invalid split
+
+    const playStart = clip.startTime + clip.trimStart;
+    const playEnd = clip.startTime + clip.duration - clip.trimEnd;
+
+    if (currentTime <= playStart || currentTime >= playEnd) return;
+
+    const splitAtVideoTime = currentTime - playStart;
+
+    // Safety guards
+    if (splitAtVideoTime <= 0 || splitAtVideoTime >= clip.duration) {
+      return;
+    }
+
+    const firstClip: TimelineClip = {
+      ...clip,
+      id: crypto.randomUUID(),
+      duration: splitAtVideoTime,
+      trimStart: clip.trimStart,
+      trimEnd: 0,
+    };
+
+    const secondClip: TimelineClip = {
+      ...clip,
+      id: crypto.randomUUID(),
+      startTime: clip.startTime + splitAtVideoTime,
+      duration: clip.duration - splitAtVideoTime,
+      trimStart: 0,
+      trimEnd: clip.trimEnd,
+    };
+
+    useEditorStore.setState((state) => {
+      const clips = state.clips
+        .flatMap((c) => (c.id === clip.id ? [firstClip, secondClip] : [c]))
+        .sort((a, b) => a.startTime - b.startTime);
+
+      const duration = Math.max(0, ...clips.map((c) => c.startTime + c.duration));
+
+      return {
+        clips,
+        duration,
+        activeClipId: secondClip.id,
+      };
     });
-  },
-  [clips]
-);
-const splitClipAtCurrentTime = useCallback(() => {
-  const clip = getClipAtTime(currentTime);
-  if (!clip) return; // gap or invalid split
+  }, [clips, currentTime, getClipAtTime]);
 
-const playStart = clip.startTime + clip.trimStart;
-const playEnd = clip.startTime + clip.duration - clip.trimEnd;
+  const goToNextClip = useCallback(() => {
+    const sorted = [...clips].sort((a, b) => a.startTime - b.startTime);
 
-if (currentTime <= playStart || currentTime >= playEnd) return;
+    const next = sorted.find((clip) => clip.startTime > currentTime);
 
-const splitAtVideoTime = currentTime - playStart;
-const splitOffset = splitAtVideoTime;
+    if (next) {
+      setCurrentTime(next.startTime);
+    } else {
+      setCurrentTime(duration);
+    }
+  }, [clips, currentTime, setCurrentTime, duration]);
 
-  // Safety guards
-  if (splitOffset <= 0 || splitOffset >= clip.duration) {
-    return;
-  }
+  const goToPreviousClip = useCallback(() => {
+    const sorted = [...clips].sort((a, b) => a.startTime - b.startTime);
 
-  const firstClip: TimelineClip = {
-  ...clip,
-  id: crypto.randomUUID(),
-  duration: splitAtVideoTime,
-  trimStart: clip.trimStart,
-  trimEnd: 0,
-};
+    const prev = [...sorted].reverse().find((clip) => clip.startTime < currentTime);
 
-const secondClip: TimelineClip = {
-  ...clip,
-  id: crypto.randomUUID(),
-  startTime: clip.startTime + splitAtVideoTime,
-  duration: clip.duration - splitAtVideoTime,
-  trimStart: 0,
-  trimEnd: clip.trimEnd,
-};
-
-
-useEditorStore.setState((state) => {
-  const clips = state.clips
-    .flatMap((c) =>
-      c.id === clip.id ? [firstClip, secondClip] : [c]
-    )
-    .sort((a, b) => a.startTime - b.startTime);
-
-  const duration = Math.max(
-    0,
-    ...clips.map((c) => c.startTime + c.duration)
-  );
-
-  return {
-    clips,
-    duration,
-    activeClipId: secondClip.id,
-  };
-});
-
-
-}, [clips, currentTime, getClipAtTime]);
-
-
- const goToNextClip = useCallback(() => {
-  const sorted = [...clips].sort((a, b) => a.startTime - b.startTime);
-
-  const next = sorted.find(
-    (clip) => clip.startTime > currentTime
-  );
-
-  if (next) {
-    setCurrentTime(next.startTime);
-  } else {
-    // Optional: jump to end
-    setCurrentTime(duration);
-  }
-}, [clips, currentTime, setCurrentTime, duration]);
-
-const goToPreviousClip = useCallback(() => {
-  const sorted = [...clips].sort((a, b) => a.startTime - b.startTime);
-
-  const prev = [...sorted]
-    .reverse()
-    .find((clip) => clip.startTime < currentTime);
-
-  if (prev) {
-    setCurrentTime(prev.startTime);
-  } else {
-    // Optional: jump to start
-    setCurrentTime(0);
-  }
-}, [clips, currentTime, setCurrentTime]);
+    if (prev) {
+      setCurrentTime(prev.startTime);
+    } else {
+      setCurrentTime(0);
+    }
+  }, [clips, currentTime, setCurrentTime]);
 
   // Render helpers
   const renderTimelineRuler = () => {
-    const safeTime = isPlaying
-  ? currentTime
-  : clampTimeToSoftTrim(currentTime);
+    const safeTime = isPlaying ? currentTime : clampTimeToSoftTrim(currentTime);
 
     const playheadLeft = safeTime * TIMELINE_SCALE;
 
@@ -367,8 +346,7 @@ const goToPreviousClip = useCallback(() => {
         className="relative h-8 bg-[#0a0f24] border-b border-white/10"
         onClick={handleTimelineClick}
       >
-        
-        {/* Ruler marks */}
+        {/* Ruler marks - ✅ UPDATED: Use formatTime */}
         {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
           <div
             key={i}
@@ -376,7 +354,7 @@ const goToPreviousClip = useCallback(() => {
             style={{ left: i * TIMELINE_SCALE }}
           >
             <span className="absolute top-1 left-1 text-xs text-white/60">
-              {i}s
+              {formatTime(i)}
             </span>
           </div>
         ))}
@@ -388,26 +366,25 @@ const goToPreviousClip = useCallback(() => {
             style={{ left: dropIndicatorPosition * TIMELINE_SCALE }}
           />
         )}
+
+        {/* Zoom controls */}
         <div className="flex gap-2 px-4 py-2">
-  <button
-    onClick={() => useEditorStore.getState().setZoom(zoom - 0.25)}
-    className="px-2 py-1 bg-gray-700 text-white text-xs rounded"
-  >
-    −
-  </button>
+          <button
+            onClick={() => useEditorStore.getState().setZoom(zoom - 0.25)}
+            className="px-2 py-1 bg-gray-700 text-white text-xs rounded"
+          >
+            −
+          </button>
 
-  <span className="text-xs text-white/70">
-    Zoom: {zoom.toFixed(2)}x
-  </span>
+          <span className="text-xs text-white/70">Zoom: {zoom.toFixed(2)}x</span>
 
-  <button
-    onClick={() => useEditorStore.getState().setZoom(zoom + 0.25)}
-    className="px-2 py-1 bg-gray-700 text-white text-xs rounded"
-  >
-    +
-  </button>
-</div>
-
+          <button
+            onClick={() => useEditorStore.getState().setZoom(zoom + 0.25)}
+            className="px-2 py-1 bg-gray-700 text-white text-xs rounded"
+          >
+            +
+          </button>
+        </div>
 
         {/* Playhead */}
         <div
@@ -427,7 +404,7 @@ const goToPreviousClip = useCallback(() => {
     );
   };
 
-  const renderClip = (clip: any) => {
+  const renderClip = (clip: TimelineClip) => {
     const fullWidth = clip.duration * TIMELINE_SCALE;
     const left = clip.startTime * TIMELINE_SCALE;
     const trimStartWidth = clip.trimStart * TIMELINE_SCALE;
@@ -495,86 +472,93 @@ const goToPreviousClip = useCallback(() => {
       </div>
     );
   };
+
   const startPlayback = useCallback(() => {
-  lastTimeRef.current = performance.now();
+    lastTimeRef.current = performance.now();
 
-  const tick = (now: number) => {
-    const delta = (now - lastTimeRef.current) / 1000;
-    lastTimeRef.current = now;
+    const tick = (now: number) => {
+      const delta = (now - lastTimeRef.current) / 1000;
+      lastTimeRef.current = now;
 
-   setCurrentTime((t) => {
-  const next = t + delta;
-  if (next >= duration) {
-    stopPlayback();
-    return duration;
-  }
-  return next;
-});
+      setCurrentTime((t: number) => {
+        const next = t + delta;
+        if (next >= duration) {
+          stopPlayback();
+          return duration;
+        }
+        return next;
+      });
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
 
     rafRef.current = requestAnimationFrame(tick);
-  };
+  }, [setCurrentTime, duration]);
 
-  rafRef.current = requestAnimationFrame(tick);
-}, [setCurrentTime, duration]);
+  const stopPlayback = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
 
-const stopPlayback = useCallback(() => {
-  if (rafRef.current) {
-    cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-  }
-}, []);
-useEffect(() => {
-  if (isPlaying) {
-    startPlayback();
-  } else {
-    stopPlayback();
-  }
+  useEffect(() => {
+    if (isPlaying) {
+      startPlayback();
+    } else {
+      stopPlayback();
+    }
 
-  return stopPlayback;
-}, [isPlaying, startPlayback, stopPlayback]);
+    return stopPlayback;
+  }, [isPlaying, startPlayback, stopPlayback]);
 
-  
   const timelineWidth = Math.max(duration * TIMELINE_SCALE + 200, 1000);
 
   return (
-    <div className="w-full  bg-[#0f1629] border-t border-white/10">
+    <div className="w-full bg-[#0f1629] border-t border-white/10">
+      {/* ✅ Playback Controls - YOUR EXISTING UI */}
       <div className="px-4 py-2 border-b border-white/10">
-       <div className="flex items-center gap-2 justify-center">
-  <button
-    onClick={goToPreviousClip}
-    className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
-  >
-    ⏮ Prev
-  </button>
+        <div className="flex items-center gap-2 justify-center">
+          <button
+            onClick={goToPreviousClip}
+            className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
+          >
+            ⏮ Prev
+          </button>
 
-  <button
-    onClick={() => (isPlaying ? pause() : play())}
-    className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
-  >
-    {isPlaying ? "Pause" : "Play"}
-  </button>
-   <button
-  onClick={splitClipAtCurrentTime}
-  className="px-3 py-1 bg-yellow-600 text-black text-xs rounded"
->
-  ✂ Split
-</button>
+          <button
+            onClick={() => (isPlaying ? pause() : play())}
+            className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
+          >
+            {isPlaying ? "Pause" : "Play"}
+          </button>
 
-  <button
-    onClick={goToNextClip}
-    className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
-  >
-    Next ⏭
-  </button>
+          <button
+            onClick={splitClipAtCurrentTime}
+            className="px-3 py-1 bg-yellow-600 text-black text-xs rounded"
+          >
+            ✂ Split
+          </button>
 
-  <button
-    onClick={() => setCurrentTime(0)}
-    className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
-  >
-    ⏮ Start
-  </button>
-</div>
+          <button
+            onClick={goToNextClip}
+            className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
+          >
+            Next ⏭
+          </button>
 
+          <button
+            onClick={() => setCurrentTime(0)}
+            className="px-3 py-1 bg-gray-700 text-white text-xs rounded"
+          >
+            ⏮ Start
+          </button>
+
+          {/* ✅ NEW: Time display using formatTime */}
+          <span className="text-xs text-white/70 ml-4 font-mono">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
+        </div>
       </div>
 
       <div className="overflow-x-auto overflow-y-hidden">

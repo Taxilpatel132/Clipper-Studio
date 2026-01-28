@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { useEditor } from "@/hooks/useEditor";
+import { useEditorStore } from "@/editor/store/editor.store";
 
 /**
- * Get the currently active/selected clip
+ * Get the currently selected clip
  */
 export function useActiveClip() {
-  const { clips, activeClipId } = useEditor();
+  const clips = useEditorStore((state) => state.clips);
+  const activeClipId = useEditorStore((state) => state.activeClipId);
 
   return useMemo(() => {
     if (!activeClipId) return null;
@@ -14,10 +15,10 @@ export function useActiveClip() {
 }
 
 /**
- * Get sorted clips by start time
+ * Get clips sorted by start time
  */
 export function useSortedClips() {
-  const { clips } = useEditor();
+  const clips = useEditorStore((state) => state.clips);
 
   return useMemo(
     () => [...clips].sort((a, b) => a.startTime - b.startTime),
@@ -26,10 +27,10 @@ export function useSortedClips() {
 }
 
 /**
- * Get clip count
+ * Get number of clips
  */
 export function useClipCount() {
-  const { clips } = useEditor();
+  const clips = useEditorStore((state) => state.clips);
   return clips.length;
 }
 
@@ -37,6 +38,14 @@ export function useClipCount() {
  * Check if a specific clip is selected
  */
 export function useIsClipSelected(clipId: string) {
-  const { activeClipId } = useEditor();
+  const activeClipId = useEditorStore((state) => state.activeClipId);
   return activeClipId === clipId;
+}
+
+/**
+ * Check if any clip is selected
+ */
+export function useHasActiveClip() {
+  const activeClipId = useEditorStore((state) => state.activeClipId);
+  return activeClipId !== null;
 }

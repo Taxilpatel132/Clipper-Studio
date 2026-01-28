@@ -1,69 +1,76 @@
-import { useEditor } from "@/hooks/useEditor";
-import { useTotalDuration } from "@/editor/selectors";
+import { useEditorStore } from "@/editor/store/editor.store";
 import { clampTime } from "@/editor/engine";
 
 /**
  * Hook for playback-related actions
  */
 export function usePlaybackActions() {
+  const store = useEditorStore();
+
   const {
-    play,
-    pause,
-    togglePlay,        // ✅ This exists in your store
     isPlaying,
     currentTime,
+    duration,
+    play,
+    pause,
+    togglePlay,
     setCurrentTime,
-  } = useEditor();
-
-  const totalDuration = useTotalDuration();
+  } = store;
 
   /**
-   * Seek to a specific time
+   * Seek to a specific time (with bounds checking)
    */
   const seekTo = (time: number) => {
-    const safeDuration = totalDuration > 0 ? totalDuration : 0;
+    const safeDuration = duration > 0 ? duration : 0;
     const clampedTime = clampTime(time, 0, safeDuration);
     setCurrentTime(clampedTime);
   };
 
   /**
-   * Seek forward by seconds
+   * Skip forward by X seconds (default 5)
    */
   const seekForward = (seconds = 5) => {
     seekTo(currentTime + seconds);
   };
 
   /**
-   * Seek backward by seconds
+   * Skip backward by X seconds (default 5)
    */
   const seekBackward = (seconds = 5) => {
     seekTo(currentTime - seconds);
   };
 
   /**
-   * Go to start of timeline
+   * Jump to start of timeline
    */
   const goToStart = () => {
     setCurrentTime(0);
   };
 
   /**
-   * Go to end of timeline
+   * Jump to end of timeline
    */
   const goToEnd = () => {
-    setCurrentTime(totalDuration);
+    setCurrentTime(duration);
   };
 
   return {
+    // State
+    isPlaying,
+    currentTime,
+    duration,
+    
+    // Store methods
     play,
     pause,
     togglePlay,
+    setCurrentTime,
+    
+    // Custom actions
     seekTo,
     seekForward,
     seekBackward,
     goToStart,
     goToEnd,
-    isPlaying,
-    currentTime,
   };
 }

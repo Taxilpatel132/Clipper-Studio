@@ -4,6 +4,7 @@ export {
   useSortedClips,
   useClipCount,
   useIsClipSelected,
+  useHasActiveClip,
 } from "./clip.selectors";
 
 // Timeline selectors
@@ -13,4 +14,5 @@ export {
   useTotalDuration,
   useIsInGap,
   useIsTimelineEmpty,
+  usePlaybackState,
 } from "./timeline.selectors";
