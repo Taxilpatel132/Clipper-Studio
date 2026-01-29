@@ -1,25 +1,21 @@
-import { TimelineClip } from "./clip.types";
+export type EditorMode = "idle" | "dragging" | "trimming" | "selecting";
 
-/**
- * A segment that contains a clip
- */
-export interface ClipSegment {
-  type: "clip";
-  start: number;
-  end: number;
-  clip: TimelineClip;
+export interface SnapPoint {
+  time: number;
+  type: "clip-start" | "clip-end" | "playhead" | "marker";
+  clipId?: string;
 }
 
-/**
- * A gap between clips
- */
-export interface GapSegment {
-  type: "gap";
-  start: number;
-  end: number;
+export interface DragState {
+  clipId: string | null;
+  startX: number;
+  startTime: number;
+  offset: number;
 }
 
-/**
- * Union type for timeline segments
- */
-export type TimelineSegment = ClipSegment | GapSegment;
+export interface TrimState {
+  clipId: string | null;
+  type: "start" | "end" | null;
+  initialTrimStart: number;
+  initialTrimEnd: number;
+}

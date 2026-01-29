@@ -1,37 +1,38 @@
 /**
- * Format seconds to MM:SS or HH:MM:SS
+ * Format seconds to MM:SS
  */
 export function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) {
-    return "0:00";
-  }
-
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
+  const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-
-  if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 /**
- * Format time with milliseconds (e.g., 1:23.45)
+ * Format seconds to MM:SS.ms
  */
-export function formatTimeWithMs(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) {
-    return "0:00.00";
-  }
-
-  const base = formatTime(seconds);
+export function formatTimePrecise(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
   const ms = Math.floor((seconds % 1) * 100);
-  return `${base}.${ms.toString().padStart(2, "0")}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}.${ms
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 /**
- * Clamp time within bounds
+ * Parse time string to seconds
  */
-export function clampTime(time: number, min: number, max: number): number {
+export function parseTime(timeStr: string): number {
+  const parts = timeStr.split(":").map(Number);
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return parts[0] * 3600 + parts[1] * 60 + parts[2];
+}
+
+/**
+ * Clamp time value between min and max
+ */
+export function clampTime(time: number, min: number = 0, max: number): number {
   return Math.max(min, Math.min(time, max));
 }
