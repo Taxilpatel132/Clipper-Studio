@@ -8,8 +8,10 @@ export interface TimelineClip {
   startTime: number;   // position on timeline
   duration: number;    // full clip duration
 
-  trimStart: number;   // seconds trimmed from start
-  trimEnd: number;     // seconds trimmed from end
+  trimStart: number;   
+  trimEnd: number;     
+    type: "video" | "audio" | "image"; 
+
 }
 
 

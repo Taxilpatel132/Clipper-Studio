@@ -111,6 +111,7 @@ export default function VideoPreview({ onRemove }: Props) {
       duration: video.duration,
       trimStart: 0,
       trimEnd: 0,
+      type: "video",
     });
 
     clearPendingVideo();
