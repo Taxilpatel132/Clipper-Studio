@@ -1,31 +1,41 @@
-# ◆ AI Video Editor
+# ◆ Clipper Studio — AI Video Editor
 
-A modern, web-based video editing application built with Next.js 16, featuring AI-powered tools and a professional timeline interface. This application provides intuitive video editing capabilities with a cyberpunk-inspired design.
+A modern, web-based video editing application built with Next.js 16, featuring AI-powered tools and a professional timeline interface. Part of the **Clipper Studio** suite with a separate Node.js/Express backend.
+
+Users can edit videos **without login or creating a project** — authentication is only required for saving and downloading. The application provides intuitive video editing capabilities with a cyberpunk-inspired design.
 
 ## 🚀 Features
 
-### Core Video Editing
+### Core Video Editing ✅
 
-- **Video Upload & Preview** - Support for MP4, MOV, AVI formats
-- **Professional Timeline** - Drag-and-drop timeline with clip management
-- **Real-time Playback** - Smooth video playback with time controls
-- **Multi-clip Support** - Layer and sequence multiple video clips
-- **Clip Trimming** - Soft trim with visual feedback
-- **Clip Splitting** - Split clips at any point on the timeline
-- **Snap-to-Grid** - Intelligent snapping for precise editing
+- **Video Upload & Preview** — Support for MP4, MOV, AVI formats via local blob URLs
+- **Professional Timeline** — Drag-and-drop timeline with clip management
+- **Real-time Playback** — `requestAnimationFrame`-based playback with time sync
+- **Multi-clip Support** — Sequence multiple video clips on a single track
+- **Clip Trimming** — Non-destructive soft trim (start/end) with visual feedback
+- **Clip Splitting** — Split clips at the playhead into two clips
+- **Clip Duplication** — Duplicate any clip and append to timeline
+- **Snap-to-Edge** — Intelligent snapping to clip edges when dragging
+- **Zoom Controls** — Adjustable timeline zoom (0.25 step) for precision editing
+- **Playhead Scrubbing** — Click or drag the playhead to seek through the timeline
+- **Gap Detection** — Visual feedback when playhead is in an empty segment
 
-### AI-Powered Tools
+### Professional Interface ✅
 
-- **AI Generation** - Generate video content using artificial intelligence
-- **Smart Editing** - Intelligent editing suggestions and automation
+- **Modern UI** — Clean, professional interface with cyberpunk aesthetics
+- **Tool Panel** — Organized sidebar with Video, Audio, Image, and Text tool categories
+- **Navbar** — Export dialog with resolution presets (720p / 1080p / 4K / Custom)
+- **Responsive Design** — Works seamlessly across different screen sizes
+- **Real-time Updates** — Live preview of changes as you edit
 
-### Professional Interface
+### Planned / In Progress 🚧
 
-- **Modern UI** - Clean, professional interface with cyberpunk aesthetics
-- **Tool Panel** - Organized sidebar with video, audio, image, and text tools
-- **Responsive Design** - Works seamlessly across different screen sizes
-- **Real-time Updates** - Live preview of changes as you edit
-- **Zoom Controls** - Adjustable timeline zoom for precision editing
+- **AI Generation** — Generate video content using AI (UI placeholder exists)
+- **AI Avatars** — AI avatar selection (placeholder cards in ToolPanel)
+- **Audio / Image / Text Tools** — Coming soon (UI stubs exist)
+- **Backend Frame Extraction** — FFmpeg-based frame thumbnails for timeline
+- **Render & Export** — Server-side rendering via backend (route exists, action stub)
+- **No-Auth Editing** — Users can edit without login; auth only for save/download
 
 ## 🛠️ Tech Stack
 
@@ -86,18 +96,21 @@ src/
 │   │   └── timeline.selectors.ts# Timeline-related selectors
 │   │
 │   ├── actions/                 # State mutations (React hooks)
-│   │   ├── index.ts             # Export all actions
+│   │   ├── index.ts             # Export clip & playback actions
 │   │   ├── clip.actions.ts      # Clip CRUD operations
 │   │   ├── playback.actions.ts  # Play/pause/seek actions
-│   │   ├── timeline.actions.ts  # Timeline drag/zoom actions
-│   │   └── render.actions.ts    # Export/render actions
+│   │   ├── timeline.actions.ts  # 🚧 Empty stub (planned)
+│   │   └── render.actions.ts    # 🚧 Empty stub (planned)
+│   │
+│   ├── services/                # 🚧 Empty (planned: API services)
 │   │
 │   └── timeline/                # Timeline utilities
-│       └── timelineSegments.ts  # Segment calculations
+│       └── timelineSegments.ts  # Segment type & calculations
 │
 ├── hooks/                       # Custom React hooks
+│   └── useEditor.ts            # Re-exports useEditorStore
 └── lib/                         # Utility functions
-    └── utils.ts                 # cn() helper and utilities
+    └── utils.ts                 # cn() helper (clsx + twMerge)
 ```
 
 ## 🏗️ Architecture Overview
@@ -153,8 +166,12 @@ The timeline component follows a **modular architecture** with clear separation 
 │                     │             │                         │
 │                     │ clips[]     │                         │
 │                     │ currentTime │                         │
+│                     │ duration    │                         │
 │                     │ isPlaying   │                         │
 │                     │ zoom        │                         │
+│                     │ activeClipId│                         │
+│                     │ editorMode  │                         │
+│                     │ previewUrl  │                         │
 │                     └─────────────┘                         │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -178,34 +195,51 @@ interface TimelineClip {
   type: "video" | "audio" | "image";
 }
 
+interface ClipPlayRange {
+  start: number;
+  end: number;
+  duration: number;
+}
+
 // timeline.types.ts
 type EditorMode = "idle" | "dragging" | "trimming" | "selecting";
+type TrimSide = "start" | "end";
 
 interface SnapPoint {
   time: number;
   type: "clip-start" | "clip-end" | "playhead" | "marker";
   clipId?: string;
 }
+
+interface DragState {
+  clipId: string;
+  startX: number;
+  originalStartTime: number;
+}
 ```
+
+> **Note:** `TimelineClip` is also defined in `editor.store.ts`. Both must stay in sync (the store version must include the `type` field).
 
 ### Engine (`src/editor/engine/`)
 
 Pure utility functions with no side effects:
 
-| Function                             | File        | Description                   |
-| ------------------------------------ | ----------- | ----------------------------- |
-| `formatTime(seconds)`                | time.ts     | Format to MM:SS               |
-| `formatTimePrecise(seconds)`         | time.ts     | Format to MM:SS.ms            |
-| `parseTime(timeStr)`                 | time.ts     | Parse time string to seconds  |
-| `clampTime(time, min, max)`          | time.ts     | Clamp time between bounds     |
-| `getClipPlayRange(clip)`             | clip.ts     | Get playable range after trim |
-| `getEffectiveDuration(clip)`         | clip.ts     | Get duration after trim       |
-| `isTimeInClip(clip, time)`           | clip.ts     | Check if time is in clip      |
-| `calculateTimelineDuration(clips)`   | timeline.ts | Total timeline duration       |
-| `xToTime(x, rect, scroll, scale)`    | timeline.ts | Convert pixels to time        |
-| `timeToX(time, scale)`               | timeline.ts | Convert time to pixels        |
-| `generateSnapPoints(clips)`          | timeline.ts | Generate snap positions       |
-| `findNearestSnapPoint(time, points)` | timeline.ts | Find closest snap             |
+| Function                                  | File        | Description                               |
+| ----------------------------------------- | ----------- | ----------------------------------------- |
+| `formatTime(seconds)`                     | time.ts     | Format to MM:SS                           |
+| `formatTimePrecise(seconds)`              | time.ts     | Format to MM:SS.ms                        |
+| `parseTime(timeStr)`                      | time.ts     | Parse time string to seconds              |
+| `clampTime(time, min, max)`               | time.ts     | Clamp time between bounds                 |
+| `getClipPlayRange(clip)`                  | clip.ts     | Get playable range after trim             |
+| `getEffectiveDuration(clip)`              | clip.ts     | Get duration after trim                   |
+| `isTimeInClip(clip, time)`                | clip.ts     | Check if time is in clip                  |
+| `timelineTimeToClipTime(clip, time)`      | clip.ts     | Convert timeline time to clip-local time  |
+| `clipTimeToTimelineTime(clip, localTime)` | clip.ts     | Convert clip-local time to timeline time  |
+| `buildTimelineSegments(clips)`            | timeline.ts | Build ordered segment array (clip or gap) |
+| `getSegmentAtTime(segments, time)`        | timeline.ts | Get the segment at a given time           |
+| `getTotalTimelineDuration(segments)`      | timeline.ts | Total duration from segments              |
+
+> **Note:** `timelineSegments.ts` in `editor/timeline/` has a parallel implementation of `buildTimelineSegments` and `getSegmentAtTime` using a discriminated union `TimelineSegment` type.
 
 ### Selectors (`src/editor/selectors/`)
 
@@ -229,22 +263,23 @@ React hooks for derived/computed state:
 
 React hooks for state mutations:
 
-| Hook                   | File                | Actions                                                         |
-| ---------------------- | ------------------- | --------------------------------------------------------------- |
-| `useClipActions()`     | clip.actions.ts     | selectClip, deleteClip, duplicateClip, splitClipAtTime          |
-| `usePlaybackActions()` | playback.actions.ts | play, pause, togglePlay, seekTo, goToNextClip, goToPreviousClip |
-| `useTimelineActions()` | timeline.actions.ts | setZoom, zoomIn, zoomOut, repositionClip, startDrag, endDrag    |
+| Hook                   | File                | Actions                                                                                    | Status |
+| ---------------------- | ------------------- | ------------------------------------------------------------------------------------------ | ------ |
+| `useClipActions()`     | clip.actions.ts     | selectClip, deleteClip, duplicateClip, splitClipAtTime, addClip                            | ✅     |
+| `usePlaybackActions()` | playback.actions.ts | play, pause, togglePlay, seekTo, skipForward, skipBackward, goToNextClip, goToPreviousClip | ✅     |
+| `useTimelineActions()` | timeline.actions.ts | _(empty stub — planned)_                                                                   | 🚧     |
+| `useRenderActions()`   | render.actions.ts   | _(empty stub — planned)_                                                                   | 🚧     |
 
 ### Timeline Components (`src/components/timeline/`)
 
-| Component                | Lines | Purpose                                |
-| ------------------------ | ----- | -------------------------------------- |
-| `Timeline.tsx`           | ~60   | Main orchestrator component            |
-| `PlaybackControls.tsx`   | ~50   | Play, pause, split, navigation buttons |
-| `TimelineRuler.tsx`      | ~70   | Time ruler with playhead and markers   |
-| `TimelineClipBlock.tsx`  | ~80   | Individual clip with trim handles      |
-| `ZoomControls.tsx`       | ~30   | Zoom in/out controls                   |
-| `useTimelineControls.ts` | ~300  | All timeline interaction logic         |
+| Component                | Lines | Purpose                                                                 |
+| ------------------------ | ----- | ----------------------------------------------------------------------- |
+| `Timeline.tsx`           | ~100  | Main orchestrator — wires controls, ruler, and clips                    |
+| `PlaybackControls.tsx`   | ~50   | Prev / Play-Pause / Split / Next / Start + time display                 |
+| `TimelineRuler.tsx`      | ~70   | Second marks, drop indicator, zoom controls, red playhead               |
+| `TimelineClipBlock.tsx`  | ~90   | Clip block with trim overlays, drag styling, name label                 |
+| `ZoomControls.tsx`       | ~30   | Zoom ± buttons (0.25 step) with current level display                   |
+| `useTimelineControls.ts` | ~440  | All timeline interaction logic (drag, trim, snap, split, playback loop) |
 
 ## 🚀 Getting Started
 
@@ -349,16 +384,20 @@ The application features a custom cyberpunk-inspired design with:
 
 ## 🔮 Future Enhancements
 
-- [ ] Real-time collaboration features
-- [ ] Advanced AI video generation
-- [ ] Cloud-based rendering
-- [ ] Extended format support (WebM, MKV)
-- [ ] Mobile application
+- [ ] Timeline frame thumbnails (FFmpeg backend extraction)
+- [ ] Timeline actions hook (`timeline.actions.ts`)
+- [ ] Render/export actions hook (`render.actions.ts`)
+- [ ] Backend API services (`editor/services/`)
 - [ ] Keyboard shortcuts
 - [ ] Undo/Redo history
-- [ ] Multi-track audio
+- [ ] Multi-track timeline (audio, text, image layers)
 - [ ] Video effects and transitions
 - [ ] Text overlays and captions
+- [ ] Extended format support (WebM, MKV)
+- [ ] Advanced AI video generation
+- [ ] Cloud-based rendering
+- [ ] Real-time collaboration
+- [ ] Mobile application
 
 ## 🧪 Testing
 
@@ -398,22 +437,52 @@ This project is part of the Clipper Studio suite - a comprehensive video editing
 
 ```typescript
 // Types
-import type { TimelineClip, EditorMode } from "@/editor/types";
+import type {
+  TimelineClip,
+  ClipPlayRange,
+  EditorMode,
+  SnapPoint,
+} from "@/editor/types";
 
-// Engine utilities
-import { formatTime, clampTime, xToTime } from "@/editor/engine";
+// Engine utilities (pure functions)
+import {
+  formatTime,
+  formatTimePrecise,
+  clampTime,
+  getClipPlayRange,
+  getEffectiveDuration,
+  isTimeInClip,
+  buildTimelineSegments,
+  getSegmentAtTime,
+} from "@/editor/engine";
 
-// Selectors (hooks)
-import { useSortedClips, useActiveClip } from "@/editor/selectors";
+// Selectors (read-only hooks)
+import {
+  useSortedClips,
+  useActiveClip,
+  useClipAtTime,
+} from "@/editor/selectors";
+import {
+  useTimelineScale,
+  usePlaybackState,
+  useDragState,
+} from "@/editor/selectors";
 
-// Actions (hooks)
+// Actions (mutation hooks)
 import { useClipActions, usePlaybackActions } from "@/editor/actions";
 
-// Store
+// Store (direct access)
 import { useEditorStore } from "@/editor/store/editor.store";
 
 // Components
-import { Timeline, PlaybackControls } from "@/components/timeline";
+import {
+  Timeline,
+  PlaybackControls,
+  TimelineClipBlock,
+} from "@/components/timeline";
+
+// Re-export shortcut
+import { useEditorStore } from "@/hooks/useEditor";
 ```
 
 ### File Responsibilities

@@ -40,6 +40,7 @@ export function useClipActions() {
       duration: clip.duration,
       trimStart: clip.trimStart,
       trimEnd: clip.trimEnd,
+      type: clip.type,
     });
   };
 
