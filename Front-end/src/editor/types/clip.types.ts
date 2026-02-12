@@ -7,8 +7,17 @@ export interface TimelineClip {
   trimStart: number;
   trimEnd: number;
   type: "video" | "audio" | "image";
+  previewSessionId?: string;
+  framesBaseUrl?: string;
+  fps?: number;
 }
-
+export interface EditorSnapshot {
+  clips: TimelineClip[]
+  currentTime: number
+  duration: number
+  zoom: number
+  activeClipId: string | null
+}
 export interface ClipPlayRange {
   start: number;
   end: number;

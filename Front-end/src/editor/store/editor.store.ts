@@ -1,5 +1,5 @@
 import { create } from "zustand";
-
+import {EditorSnapshot} from '../types/clip.types'
 export interface TimelineClip {
   id: string;
   name: string;
@@ -11,9 +11,18 @@ export interface TimelineClip {
   trimStart: number;   
   trimEnd: number;     
     type: "video" | "audio" | "image"; 
+     previewSessionId?: string;
+  framesBaseUrl?: string;
+  fps?: number;
 
 }
-
+const createSnapshot = (state: EditorState): EditorSnapshot => ({
+  clips: JSON.parse(JSON.stringify(state.clips)),
+  currentTime: state.currentTime,
+  duration: state.duration,
+  zoom: state.zoom,
+  activeClipId: state.activeClipId,
+});
 
 interface EditorState {
   projectId: string | null;
@@ -33,7 +42,15 @@ interface EditorState {
   // Enhanced drag state
   dragOffset: number;
   dropIndicatorPosition: number | null;
+  history: {
+  past: EditorSnapshot[]
+  
+  future: EditorSnapshot[]
+}
 
+pushToHistory: () => void
+undo: () => void
+redo: () => void
   setProject: (id: string, name: string) => void;
 
   play: () => void;
@@ -45,11 +62,12 @@ interface EditorState {
 
   addClip: (clip: TimelineClip) => void;
   clearClips: () => void;
-
+  
   selectClip: (clipId: string | null) => void;
   setZoom: (zoom: number) => void;
   
   // New upload methods
+  getVideoDuration: (src: string) => Promise<number>;
   uploadVideo: (file: File) => Promise<boolean>;
   clearPendingVideo: () => void;
   setTrimStart: (clipId: string, value: number) => void;
@@ -88,6 +106,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Enhanced drag state
   dragOffset: 0,
   dropIndicatorPosition: null,
+  history: {
+  past: [],
+  
+  future: [],
+},
 
   setProject: (id, name) =>
     set({ projectId: id, projectName: name }),
@@ -110,49 +133,128 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setDuration: (duration) =>
     set({ duration: Math.max(0, duration) }),
 
-  addClip: (clip) =>
-  set((state) => ({
-    clips: [
+  addClip: (clip) => {
+  get().pushToHistory();
+
+  set((state) => {
+    const updatedClips = [
       ...state.clips,
-      {
-        ...clip,
-       trimStart: 0,
-       trimEnd: 0,
-      },
-    ],
-    activeClipId: clip.id,
-    duration: Math.max(
+      { ...clip, trimStart: 0, trimEnd: 0 },
+    ];
+
+    const updatedDuration = Math.max(
       state.duration,
       clip.startTime + clip.duration
-    ),
-  })),
+    );
+
+    return {
+      clips: updatedClips,
+      activeClipId: clip.id,
+      duration: updatedDuration,
+    };
+  });
+},
 
 
-  clearClips: () =>
-    set({
-      clips: [],
-      activeClipId: null,
-      currentTime: 0,
-      duration: 0,
-      isPlaying: false,
-      pendingVideoSrc: null,
-    }),
+ clearClips: () => {
+  const state = get();
+  state.pushToHistory();
+
+  get().clips.forEach((c) => {
+    if (c.src.startsWith("blob:")) {
+      URL.revokeObjectURL(c.src);
+    }
+  });
+
+  set({
+    clips: [],
+    activeClipId: null,
+    currentTime: 0,
+    duration: 0,
+    isPlaying: false,
+  });
+},
 
   selectClip: (clipId) =>
     set({ activeClipId: clipId }),
 
   setZoom: (zoom) =>
     set({ zoom: Math.min(4, Math.max(0.25, zoom)) }),
+  getVideoDuration: (src: string): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.src = src;
 
+    video.onloadedmetadata = () => {
+      resolve(video.duration);
+      //URL.revokeObjectURL(video.src); // cleanup
+    };
+
+    video.onerror = () => reject(new Error("Failed to load video metadata"));
+  });
+},
  uploadVideo: async (file: File): Promise<boolean> => {
   if (!file.type.startsWith("video/")) return false;
 
   try {
-    const url = URL.createObjectURL(file);
-    set({ pendingVideoSrc: url });
+    // 1️⃣ Upload to backend for preview frames
+    const form = new FormData();
+    form.append("video", file);
+    form.append("fps", "2");
+
+    const res = await fetch(
+      "http://localhost:5000/api/render/upload-preview",
+      {
+        method: "POST",
+        body: form,
+      }
+    );
+
+    if (!res.ok) throw new Error("Preview upload failed");
+
+    const data = await res.json();
+    // data = { previewSessionId, baseUrl, fps }
+   console.log("BACKEND baseUrl:", data.baseUrl);
+    // 2️⃣ Create local blob URL for playback
+    const videoUrl = URL.createObjectURL(file);
+
+    // 3️⃣ Create clip with TEMP duration (0 for now)
+    const clipId = crypto.randomUUID();
+
+   const clip: TimelineClip = {
+  id: clipId,
+  name: file.name,
+  src: videoUrl,
+  startTime: 0,
+  duration: 0,
+  trimStart: 0,
+  trimEnd: 0,
+  type: "video",
+
+  framesBaseUrl: data.baseUrl, // ✅ already full URL
+  fps: data.fps,
+};
+    // 4️⃣ Add clip immediately (UI responds instantly)
+    set((state) => ({
+      clips: [...state.clips, clip],
+      activeClipId: clipId,
+    }));
+
+    // 5️⃣ 🔥 NOW load real video duration
+    const duration = await get().getVideoDuration(videoUrl);
+
+    // 6️⃣ Update clip + timeline duration
+    set((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId ? { ...c, duration } : c
+      ),
+      duration: Math.max(state.duration, duration),
+    }));
+
     return true;
-  } catch (error) {
-    console.error("Failed to upload video:", error);
+  } catch (err) {
+    console.error("Upload preview failed:", err);
     return false;
   }
 },
@@ -188,9 +290,12 @@ setTrimEnd: (clipId, value) =>
         : clip
     ),
   })),
-  applyTrim: (clipId) =>
-  set((state) => ({
-    clips: state.clips.map((clip) => {
+  applyTrim: (clipId) => {
+  const state = get();
+  state.pushToHistory();
+
+  set((s) => ({
+    clips: s.clips.map((clip) => {
       if (clip.id !== clipId) return clip;
 
       const newDuration =
@@ -205,7 +310,8 @@ setTrimEnd: (clipId, value) =>
       };
     }),
     mode: "idle",
-  })),
+  }));
+},
   
   setDraggingClip: (id) => set({ draggingClipId: id }),
 
@@ -213,9 +319,12 @@ setTrimEnd: (clipId, value) =>
   
   setDropIndicator: (position) => set({ dropIndicatorPosition: position }),
   
-repositionClip: (clipId, newStartTime) =>
-  set((state) => {
-    const updated = state.clips.map((clip) =>
+repositionClip: (clipId, newStartTime) => {
+  const state = get();
+  state.pushToHistory();
+
+  set((s) => {
+    const updated = s.clips.map((clip) =>
       clip.id === clipId
         ? { ...clip, startTime: newStartTime }
         : clip
@@ -238,12 +347,16 @@ repositionClip: (clipId, newStartTime) =>
       clips: sorted,
       duration,
     };
-  }),
+  });
+},
 
 
-  reorderClips: (from, to) =>
-    set((state) => {
-      const sortedClips = [...state.clips].sort((a, b) => a.startTime - b.startTime);
+  reorderClips: (from, to) => {
+    const state = get();
+    state.pushToHistory();
+
+    set((s) => {
+      const sortedClips = [...s.clips].sort((a, b) => a.startTime - b.startTime);
       const [movedClip] = sortedClips.splice(from, 1);
       sortedClips.splice(to, 0, movedClip);
 
@@ -260,6 +373,58 @@ repositionClip: (clipId, newStartTime) =>
         activeClipId: movedClip.id,
         duration: currentTime
       };
-    }),
+    });
+  },
+ pushToHistory: () => {
+  const state = get();
+  const snapshot = createSnapshot(state);
+
+  set((s) => ({
+    history: {
+      past: [...s.history.past, snapshot].slice(-50),
+      future: [],
+    },
+  }));
+},
+undo: () =>
+  set((state) => {
+    if (state.history.past.length === 0) return state;
+
+    const previous =
+      state.history.past[state.history.past.length - 1];
+
+    const newPast =
+      state.history.past.slice(0, -1);
+
+    const currentSnapshot = createSnapshot(state);
+
+    return {
+      ...state,
+      ...previous,
+      history: {
+        past: newPast,
+        future: [currentSnapshot, ...state.history.future],
+      },
+    };
+  }),
+  redo: () =>
+  set((state) => {
+    if (state.history.future.length === 0) return state;
+
+    const next = state.history.future[0];
+    const newFuture = state.history.future.slice(1);
+
+    const currentSnapshot = createSnapshot(state);
+
+    return {
+      ...state,
+      ...next,
+      history: {
+        past: [...state.history.past, currentSnapshot],
+        future: newFuture,
+      },
+    };
+  }),
+
     
 }));

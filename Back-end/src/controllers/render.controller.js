@@ -41,11 +41,11 @@ export const uploadPreviewFramesController = async (req, res) => {
       tempId
     });
 
-    res.json({
-      tempId,
-      filename: req.file.originalname,
-      framesDir
-    });
+  res.json({
+  previewSessionId: tempId,
+  fps,
+  baseUrl: `http://localhost:5000/frames/${tempId}`
+});
   } catch (err) {
     console.error(err);
     res.status(500).json({

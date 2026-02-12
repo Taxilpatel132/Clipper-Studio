@@ -12,10 +12,32 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
-import { useState } from "react";
-
+import { useEffect, useState, } from "react";
+import { useEditorStore } from "@/editor/store/editor.store";
 export default function Navbar() {
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const undo = useEditorStore((s) => s.undo);
+const redo = useEditorStore((s) => s.redo);
+const canUndo = useEditorStore((s) => s.history.past.length > 0);
+const canRedo = useEditorStore((s) => s.history.future.length > 0);
+
+
+useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.ctrlKey && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      undo();
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === "y") {
+      e.preventDefault();
+      redo();
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [undo, redo]);
   return (
     <div className="w-full h-14 px-6 bg-[#0f1629] border-b border-[#5adaff]/20 flex items-center justify-between backdrop-blur-sm">
       <div className="flex items-center gap-3">
@@ -85,13 +107,15 @@ export default function Navbar() {
           {/* Undo */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="hover:bg-[#5adaff]/10 hover:text-[#5adaff] text-white/70"
-              >
-                <Undo2 size={18} />
-              </Button>
+             <Button 
+  variant="ghost"
+  size="icon"
+  onClick={undo}
+  disabled={!canUndo}
+  className="hover:bg-[#5adaff]/10 hover:text-[#5adaff] text-white/70 disabled:opacity-40"
+>
+  <Undo2 size={18} />
+</Button>
             </TooltipTrigger>
             <TooltipContent className="bg-[#1a1f35] border-[#5adaff]/20">
               <p>Undo</p>
@@ -101,13 +125,15 @@ export default function Navbar() {
           {/* Redo */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="hover:bg-[#5adaff]/10 hover:text-[#5adaff] text-white/70"
-              >
-                <Redo2 size={18} />
-              </Button>
+             <Button 
+  variant="ghost"
+  size="icon"
+  onClick={redo}
+  disabled={!canRedo}
+  className="hover:bg-[#5adaff]/10 hover:text-[#5adaff] text-white/70 disabled:opacity-40"
+>
+  <Redo2 size={18} />
+</Button>
             </TooltipTrigger>
             <TooltipContent className="bg-[#1a1f35] border-[#5adaff]/20">
               <p>Redo</p>

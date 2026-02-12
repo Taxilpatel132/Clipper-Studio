@@ -19,6 +19,7 @@ Users can edit videos **without login or creating a project** — authentication
 - **Zoom Controls** — Adjustable timeline zoom (0.25 step) for precision editing
 - **Playhead Scrubbing** — Click or drag the playhead to seek through the timeline
 - **Gap Detection** — Visual feedback when playhead is in an empty segment
+- **Frame Extraction** — FFmpeg-based frame thumbnails displayed in timeline track
 
 ### Professional Interface ✅
 
@@ -33,7 +34,6 @@ Users can edit videos **without login or creating a project** — authentication
 - **AI Generation** — Generate video content using AI (UI placeholder exists)
 - **AI Avatars** — AI avatar selection (placeholder cards in ToolPanel)
 - **Audio / Image / Text Tools** — Coming soon (UI stubs exist)
-- **Backend Frame Extraction** — FFmpeg-based frame thumbnails for timeline
 - **Render & Export** — Server-side rendering via backend (route exists, action stub)
 - **No-Auth Editing** — Users can edit without login; auth only for save/download
 
@@ -384,7 +384,7 @@ The application features a custom cyberpunk-inspired design with:
 
 ## 🔮 Future Enhancements
 
-- [ ] Timeline frame thumbnails (FFmpeg backend extraction)
+- [x] Timeline frame thumbnails (FFmpeg backend extraction)
 - [ ] Timeline actions hook (`timeline.actions.ts`)
 - [ ] Render/export actions hook (`render.actions.ts`)
 - [ ] Backend API services (`editor/services/`)

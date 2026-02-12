@@ -33,7 +33,34 @@ export function TimelineClipBlock({
   const left = clip.startTime * scale;
   const trimStartWidth = clip.trimStart * scale;
   const trimEndWidth = clip.trimEnd * scale;
+  const fps = clip.fps ?? 1;
 
+// Visible (non-trimmed) segment
+const visibleStart = clip.trimStart;
+const visibleDuration =
+  clip.duration - clip.trimStart - clip.trimEnd;
+
+// Frame calculation
+const startFrame = Math.floor(visibleStart * fps);
+const frameCount = Math.max(
+  0,
+  Math.floor(visibleDuration * fps)
+);
+
+const frames =
+  clip.framesBaseUrl && frameCount > 0
+    ? Array.from({ length: frameCount }, (_, i) => {
+        const index = String(startFrame + i + 1).padStart(3, "0");
+        return (
+          <img
+            key={i}
+            src={`${clip.framesBaseUrl}/frame_${index}.jpg`}
+            className="h-full w-auto object-cover pointer-events-none"
+            draggable={false}
+          />
+        );
+      })
+    : null;
   return (
     <div
       className={cn(
@@ -64,13 +91,24 @@ export function TimelineClipBlock({
       />
 
       {/* Active/visible section */}
-      <div
-        className="absolute top-0 h-full bg-gradient-to-r from-blue-600 to-blue-500"
-        style={{
-          left: trimStartWidth,
-          width: fullWidth - trimStartWidth - trimEndWidth,
-        }}
-      />
+     {/* Active / visible section */}
+<div
+  className="absolute top-0 h-full overflow-hidden"
+  style={{
+    left: trimStartWidth,
+    width: fullWidth - trimStartWidth - trimEndWidth,
+  }}
+>
+  {/* Frames */}
+  {frames && (
+    <div className="flex h-full">
+      {frames}
+    </div>
+  )}
+
+  {/* Overlay gradient (keeps design) */}
+  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/40 to-blue-500/40" />
+</div>
 
       {/* Trim handle - start */}
       <div
