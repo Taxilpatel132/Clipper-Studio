@@ -1,7 +1,6 @@
 "use client";
 
 import { formatTime } from "@/editor/engine";
-
 interface PlaybackControlsProps {
   isPlaying: boolean;
   currentTime: number;
@@ -12,6 +11,9 @@ interface PlaybackControlsProps {
   onNext: () => void;
   onStart: () => void;
   onSplit: () => void;
+
+  zoom: number;          // 🔥 ADD
+  onZoomChange: (z: number) => void; // 🔥 ADD
 }
 
 export function PlaybackControls({
@@ -24,6 +26,8 @@ export function PlaybackControls({
   onNext,
   onStart,
   onSplit,
+  zoom,
+  onZoomChange,
 }: PlaybackControlsProps) {
   return (
     <div className="px-4 py-2 border-b border-white/10">
@@ -66,7 +70,24 @@ export function PlaybackControls({
         <span className="text-xs text-white/70 ml-4 font-mono">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
+         <div className="flex items-center gap-3 px-4">
+        <span className="text-xs text-white/60 w-12">Zoom</span>
+
+        <input
+          type="range"
+          min={0.25}
+          max={4}
+          step={0.05}
+          value={zoom}
+          onChange={(e) => onZoomChange(parseFloat(e.target.value))}
+          className="flex-1 accent-cyan-400"
+        />
+
+        <span className="text-xs text-white/70 w-14 text-right">
+          {zoom.toFixed(2)}x
+        </span>
       </div>
+   </div>
     </div>
   );
 }

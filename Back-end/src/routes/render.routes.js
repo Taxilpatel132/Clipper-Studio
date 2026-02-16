@@ -12,5 +12,4 @@ router.post('/upload-preview',
   upload.single("video"),
   uploadPreviewFramesController);
 
-
 export default router;

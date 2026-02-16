@@ -1,5 +1,6 @@
 export interface TimelineClip {
   id: string;
+  trackId: string;   // 🔥 NEW
   name: string;
   src: string;
   startTime: number;
@@ -18,6 +19,13 @@ export interface EditorSnapshot {
   zoom: number
   activeClipId: string | null
 }
+
+export interface Track {
+  id: string;
+  type: "video" | "audio" | "image";
+  clips: TimelineClip[];
+}
+
 export interface ClipPlayRange {
   start: number;
   end: number;

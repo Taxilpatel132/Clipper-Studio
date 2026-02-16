@@ -7,7 +7,7 @@ export interface TimelineClip {
 
   startTime: number;   // position on timeline
   duration: number;    // full clip duration
-
+ trackId: string;     // 🔥 NEW - which track this clip belongs to
   trimStart: number;   
   trimEnd: number;     
     type: "video" | "audio" | "image"; 
@@ -231,7 +231,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   trimStart: 0,
   trimEnd: 0,
   type: "video",
-
+  trackId: "video-2", // 🔥 assign to a track
   framesBaseUrl: data.baseUrl, // ✅ already full URL
   fps: data.fps,
 };

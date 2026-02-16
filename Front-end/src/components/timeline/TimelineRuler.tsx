@@ -1,7 +1,7 @@
 "use client";
 
 import { formatTime } from "@/editor/engine";
-import { ZoomControls } from "./ZoomControls";
+
 
 interface TimelineRulerProps {
   duration: number;
@@ -55,8 +55,8 @@ export function TimelineRuler({
         />
       )}
 
-      {/* Zoom controls */}
-      <ZoomControls zoom={zoom} />
+     
+     
 
       {/* Playhead line */}
       <div

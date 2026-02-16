@@ -22,6 +22,14 @@ export function useTimelineControls() {
   const dragStartTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const TRACK_ORDER = [
+  "video-1",
+  "video-2",
+  "audio-1",
+  "image-1",
+];
+
+const TRACK_HEIGHT = 48; // same as h-12
 
   // ═══════════════════════════════════════════
   // Store
@@ -114,6 +122,17 @@ export function useTimelineControls() {
     [clips]
   );
 
+  //hleper function to determine track based on Y coordinate
+  const getTrackFromY = useCallback((clientY: number) => {
+  if (!timelineRef.current) return null;
+
+  const rect = timelineRef.current.getBoundingClientRect();
+  const y = clientY - rect.top;
+
+  const index = Math.floor(y / TRACK_HEIGHT);
+
+  return TRACK_ORDER[index] || null;
+}, []);
   // ═══════════════════════════════════════════
   // Playhead Dragging
   // ═══════════════════════════════════════════
@@ -210,15 +229,26 @@ export function useTimelineControls() {
       dragStartXRef.current = startX;
       dragStartTimeRef.current = clip.startTime;
 
-      const onMove = (e: MouseEvent) => {
-        const deltaX = e.clientX - dragStartXRef.current;
-        const deltaTime = deltaX / TIMELINE_SCALE;
-        const newTime = Math.max(0, dragStartTimeRef.current + deltaTime);
-        const snappedTime = findSnapPosition(newTime, clipId);
+     const onMove = (e: MouseEvent) => {
+  const deltaX = e.clientX - dragStartXRef.current;
+  const deltaTime = deltaX / TIMELINE_SCALE;
 
-        setDragOffset(deltaX);
-        setDropIndicator(snappedTime);
-      };
+  const newTime = Math.max(0, dragStartTimeRef.current + deltaTime);
+  const snappedTime = findSnapPosition(newTime, clipId);
+
+  const newTrackId = getTrackFromY(e.clientY);
+
+  setDragOffset(deltaX);
+  setDropIndicator(snappedTime);
+
+  if (newTrackId && newTrackId !== clip.trackId) {
+    useEditorStore.setState((state) => ({
+      clips: state.clips.map((c) =>
+        c.id === clipId ? { ...c, trackId: newTrackId } : c
+      ),
+    }));
+  }
+};
 
       const onUp = (e: MouseEvent) => {
         const finalDeltaX = e.clientX - dragStartXRef.current;
