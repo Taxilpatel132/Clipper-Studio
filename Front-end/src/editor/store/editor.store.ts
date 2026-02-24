@@ -1,21 +1,5 @@
 import { create } from "zustand";
-import {EditorSnapshot} from '../types/clip.types'
-export interface TimelineClip {
-  id: string;
-  name: string;
-  src: string;
-
-  startTime: number;   // position on timeline
-  duration: number;    // full clip duration
- trackId: string;     // 🔥 NEW - which track this clip belongs to
-  trimStart: number;   
-  trimEnd: number;     
-    type: "video" | "audio" | "image"; 
-     previewSessionId?: string;
-  framesBaseUrl?: string;
-  fps?: number;
-
-}
+import { EditorSnapshot, TimelineClip } from '../types/clip.types';
 const createSnapshot = (state: EditorState): EditorSnapshot => ({
   clips: JSON.parse(JSON.stringify(state.clips)),
   currentTime: state.currentTime,
@@ -23,6 +7,7 @@ const createSnapshot = (state: EditorState): EditorSnapshot => ({
   zoom: state.zoom,
   activeClipId: state.activeClipId,
 });
+
 
 interface EditorState {
   projectId: string | null;
@@ -35,6 +20,13 @@ interface EditorState {
   clips: TimelineClip[];
   activeClipId: string | null;
   zoom: number;
+  
+  // Track management
+  trackCounts: {
+    video: number;
+    overlay: number;
+    audio: number;
+  };
   
   // New upload state
   pendingVideoSrc: string | null;
@@ -52,7 +44,7 @@ pushToHistory: () => void
 undo: () => void
 redo: () => void
   setProject: (id: string, name: string) => void;
-
+  
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
@@ -85,6 +77,12 @@ reorderClips: (fromIndex: number, toIndex: number) => void;
   setDragOffset: (offset: number) => void;
   setDropIndicator: (position: number | null) => void;
   repositionClip: (clipId: string, newStartTime: number) => void;
+  getAudioDuration: (src: string) => Promise<number>;
+  uploadAudio: (file: File) => Promise<boolean>;
+setClipVolume: (clipId: string, volume: number) => void
+toggleClipMute: (clipId: string) => void
+  addTrack: (group: "video" | "overlay" | "audio") => void;
+  getNextAvailableTrack: (group: "video" | "overlay" | "audio") => number;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -102,6 +100,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeClipId: null,
   zoom: 1,
   pendingVideoSrc: null,
+
+  // Track counts - start with 1 track per group
+  trackCounts: {
+    video: 1,
+    overlay: 1,
+    audio: 1,
+  },
 
   // Enhanced drag state
   dragOffset: 0,
@@ -231,8 +236,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   trimStart: 0,
   trimEnd: 0,
   type: "video",
-  trackId: "video-2", // 🔥 assign to a track
-  framesBaseUrl: data.baseUrl, // ✅ already full URL
+  group: "video",
+  trackIndex: get().getNextAvailableTrack("video"),
+  framesBaseUrl: data.baseUrl,
   fps: data.fps,
 };
     // 4️⃣ Add clip immediately (UI responds instantly)
@@ -425,6 +431,76 @@ undo: () =>
       },
     };
   }),
+  getAudioDuration: (src: string): Promise<number> => {
+  return new Promise((resolve) => {
+    const audio = new Audio(src);
+    audio.onloadedmetadata = () => resolve(audio.duration);
+  });
+},
+uploadAudio: async (file: File) => {
+  if (!file.type.startsWith("audio/")) return false;
 
+  const url = URL.createObjectURL(file);
+
+  const duration = await new Promise<number>((resolve) => {
+    const audio = new Audio(url);
+    audio.onloadedmetadata = () => resolve(audio.duration);
+  });
+
+  const clip: TimelineClip = {
+    id: crypto.randomUUID(),
+    name: file.name,
+    src: url,
+    startTime: 0,
+    duration,
+    trimStart: 0,
+    trimEnd: 0,
+    type: "audio",
+    group: "audio",
+    trackIndex: get().getNextAvailableTrack("audio"),
+    volume: 1,
+    muted: false,
+  };
+
+  get().addClip(clip);
+  return true;
+},
+
+setClipVolume: (clipId, volume) =>
+  set((state) => ({
+    clips: state.clips.map((c) =>
+      c.id === clipId ? { ...c, volume } : c
+    ),
+  })),
+
+toggleClipMute: (clipId) =>
+  set((state) => ({
+    clips: state.clips.map((c) =>
+      c.id === clipId ? { ...c, muted: !c.muted } : c
+    ),
+  })),
+
+  // Track management
+  addTrack: (group) =>
+    set((state) => ({
+      trackCounts: {
+        ...state.trackCounts,
+        [group]: state.trackCounts[group] + 1,
+      },
+    })),
+
+  getNextAvailableTrack: (group) => {
+    const state = get();
+    const clips = state.clips.filter((c) => c.group === group);
+    
+    // Find first track with space or return last track
+    for (let i = 0; i < state.trackCounts[group]; i++) {
+      const trackClips = clips.filter((c) => c.trackIndex === i);
+      if (trackClips.length === 0) return i;
+    }
+    
+    // Return last track
+    return state.trackCounts[group] - 1;
+  },
     
 }));

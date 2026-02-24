@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Progress } from "./ui/progress";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
+import { useEditorStore } from "@/editor/store/editor.store";
 
 interface Props {
   selectedTool: string;
@@ -20,6 +21,10 @@ export default function ToolPanel({
   hasVideo = false,
   onRemoveVideo,
 }: Props) {
+  const clips = useEditorStore((s) => s.clips);
+const uploadAudio = useEditorStore((s) => s.uploadAudio);
+const setClipVolume = useEditorStore((s) => s.setClipVolume);
+const toggleClipMute = useEditorStore((s) => s.toggleClipMute);
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
@@ -140,8 +145,68 @@ export default function ToolPanel({
           </Card>
         </div>
       )}
+     {currentTool === "audio" && (
+  <Card className="bg-[#1a1f35] border-white/10">
+    <CardContent className="space-y-4">
 
-      {currentTool !== "video" && (
+      <CardTitle className="text-[#5adaff] text-lg">
+        Audio
+      </CardTitle>
+
+      {/* Upload */}
+      <input
+        type="file"
+        accept="audio/*"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) uploadAudio(file);
+        }}
+        className="text-white text-sm"
+      />
+
+      {/* Audio List */}
+      <div className="space-y-3">
+        {clips
+          .filter((c) => c.type === "audio")
+          .map((clip) => (
+            <div
+              key={clip.id}
+              className="p-3 bg-[#0f1629] rounded border border-white/10 space-y-2"
+            >
+              <div className="flex justify-between text-sm text-white">
+                <span>{clip.name}</span>
+
+                <button
+                  onClick={() => toggleClipMute(clip.id)}
+                  className="text-xs bg-gray-700 px-2 py-1 rounded"
+                >
+                  {clip.muted ? "Unmute" : "Mute"}
+                </button>
+              </div>
+
+              {/* Volume */}
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={clip.volume ?? 1}
+                onChange={(e) =>
+                  setClipVolume(clip.id, parseFloat(e.target.value))
+                }
+                className="w-full accent-cyan-400"
+              />
+
+              <div className="text-xs text-white/60">
+                Volume: {(clip.volume ?? 1).toFixed(2)}
+              </div>
+            </div>
+          ))}
+      </div>
+    </CardContent>
+  </Card>
+)}
+      {currentTool !== "video" && currentTool !== "audio" && (
         <Card className="bg-[#1a1f35] border-white/10">
           <CardContent className="text-center py-12">
             <CardTitle className="text-[#5adaff] text-lg tracking-wide mb-2">Tools for {currentTool}</CardTitle>

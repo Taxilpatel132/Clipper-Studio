@@ -1,6 +1,5 @@
 export interface TimelineClip {
   id: string;
-  trackId: string;   // 🔥 NEW
   name: string;
   src: string;
   startTime: number;
@@ -11,6 +10,11 @@ export interface TimelineClip {
   previewSessionId?: string;
   framesBaseUrl?: string;
   fps?: number;
+  volume?: number;
+  muted?: boolean;
+  // ✅ Group-based hierarchy
+  group: "video" | "overlay" | "audio";
+  trackIndex: number;
 }
 export interface EditorSnapshot {
   clips: TimelineClip[]

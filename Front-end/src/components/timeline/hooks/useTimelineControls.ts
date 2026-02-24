@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useMemo } from "react";
 import { useEditorStore } from "@/editor/store/editor.store";
 import type { TimelineClip } from "@/editor/types";
+import { getTrackIndices, ClipGroup } from "@/editor/utils/timeline.utils";
 
 const BASE_PX_PER_SECOND = 100;
 const SNAP_THRESHOLD = 10;
@@ -22,14 +23,9 @@ export function useTimelineControls() {
   const dragStartTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
-  const TRACK_ORDER = [
-  "video-1",
-  "video-2",
-  "audio-1",
-  "image-1",
-];
-
-const TRACK_HEIGHT = 48; // same as h-12
+  
+  const TRACK_HEIGHT = 48; // same as h-12
+  const HEADER_HEIGHT = 28; // group header height
 
   // ═══════════════════════════════════════════
   // Store
@@ -57,6 +53,7 @@ const TRACK_HEIGHT = 48; // same as h-12
     zoom,
     play,
     pause,
+    trackCounts,
   } = useEditorStore();
 
   const pxPerSecond = BASE_PX_PER_SECOND * zoom;
@@ -122,17 +119,46 @@ const TRACK_HEIGHT = 48; // same as h-12
     [clips]
   );
 
-  //hleper function to determine track based on Y coordinate
-  const getTrackFromY = useCallback((clientY: number) => {
-  if (!timelineRef.current) return null;
+  // Build dynamic track map for Y-coordinate detection
+  const trackMap = useMemo(() => {
+    const groups: Array<{ group: ClipGroup; trackCount: number }> = [
+      { group: "video", trackCount: trackCounts.video },
+      { group: "overlay", trackCount: trackCounts.overlay },
+      { group: "audio", trackCount: trackCounts.audio },
+    ];
 
-  const rect = timelineRef.current.getBoundingClientRect();
-  const y = clientY - rect.top;
+    let yOffset = 0;
+    const map: Array<{ yStart: number; yEnd: number; group: ClipGroup; trackIndex: number }> = [];
 
-  const index = Math.floor(y / TRACK_HEIGHT);
+    groups.forEach(({ group, trackCount }) => {
+      // Skip header
+      yOffset += HEADER_HEIGHT;
+      
+      // Create map entries for all tracks (even empty ones)
+      for (let i = 0; i < trackCount; i++) {
+        map.push({
+          yStart: yOffset,
+          yEnd: yOffset + TRACK_HEIGHT,
+          group,
+          trackIndex: i,
+        });
+        yOffset += TRACK_HEIGHT;
+      }
+    });
 
-  return TRACK_ORDER[index] || null;
-}, []);
+    return map;
+  }, [trackCounts]);
+
+  //helper function to determine track based on Y coordinate
+  const getTrackFromY = useCallback((clientY: number): { group: ClipGroup; trackIndex: number } | null => {
+    if (!timelineRef.current) return null;
+
+    const rect = timelineRef.current.getBoundingClientRect();
+    const y = clientY - rect.top;
+
+    const track = trackMap.find((t) => y >= t.yStart && y < t.yEnd);
+    return track ? { group: track.group, trackIndex: track.trackIndex } : null;
+  }, [trackMap]);
   // ═══════════════════════════════════════════
   // Playhead Dragging
   // ═══════════════════════════════════════════
@@ -236,15 +262,16 @@ const TRACK_HEIGHT = 48; // same as h-12
   const newTime = Math.max(0, dragStartTimeRef.current + deltaTime);
   const snappedTime = findSnapPosition(newTime, clipId);
 
-  const newTrackId = getTrackFromY(e.clientY);
+  const newTrack = getTrackFromY(e.clientY);
 
   setDragOffset(deltaX);
   setDropIndicator(snappedTime);
 
-  if (newTrackId && newTrackId !== clip.trackId) {
+  // ✅ Only allow dragging within the same group
+  if (newTrack && newTrack.group === clip.group && newTrack.trackIndex !== clip.trackIndex) {
     useEditorStore.setState((state) => ({
       clips: state.clips.map((c) =>
-        c.id === clipId ? { ...c, trackId: newTrackId } : c
+        c.id === clipId ? { ...c, trackIndex: newTrack.trackIndex } : c
       ),
     }));
   }

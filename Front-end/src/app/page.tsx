@@ -55,10 +55,8 @@ export default function Home() {
         </div>
       </div>
       
-      {/* Fixed Bottom Timeline */}
-      <div className="flex-shrink-0">
-        <Timeline />
-      </div>
+      {/* Resizable Bottom Timeline */}
+      <Timeline />
     </div>
   );
 }
