@@ -43,6 +43,21 @@ const userSchema = new mongoose.Schema(
       select: false
     },
 
+    level: {
+      type: String,
+      enum: ["beginner", "intermediate", "expert"],
+      default: "beginner"
+    },
+      storageUsed: {
+      type: Number,
+      default: 0
+    },
+
+    storageLimit: {
+      type: Number,
+      default: 1024 * 1024 * 500
+    },
+
     refreshTokens: [refreshTokenSchema]
   },
   { timestamps: true }
@@ -52,7 +67,6 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
   this.password = await argon2.hash(this.password);
- 
 });
 
 /* Password verification */

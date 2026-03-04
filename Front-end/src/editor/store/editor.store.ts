@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { EditorSnapshot, TimelineClip } from '../types/clip.types';
+//helper to create snapshots for undo/redo
 const createSnapshot = (state: EditorState): EditorSnapshot => ({
   clips: JSON.parse(JSON.stringify(state.clips)),
   currentTime: state.currentTime,
@@ -7,7 +8,20 @@ const createSnapshot = (state: EditorState): EditorSnapshot => ({
   zoom: state.zoom,
   activeClipId: state.activeClipId,
 });
+// Helper function to upload media files
+async function uploadMedia(file: File) {
+  const form = new FormData()
+  form.append("file", file)
 
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: form
+  })
+
+  const data = await res.json()
+
+  return data.url
+}
 
 interface EditorState {
   projectId: string | null;
@@ -64,6 +78,9 @@ redo: () => void
   clearPendingVideo: () => void;
   setTrimStart: (clipId: string, value: number) => void;
 setTrimEnd: (clipId: string, value: number) => void;
+uploadImage: (file: File) => Promise<boolean>;
+addTextOverlay: (text: string) => void;
+addBackgroundOverlay: (color: string) => void;
 mode: "idle" | "trimming" | "dragging";
 
 setMode: (mode: "idle" | "trimming" | "dragging") => void;
@@ -83,6 +100,7 @@ setClipVolume: (clipId: string, volume: number) => void
 toggleClipMute: (clipId: string) => void
   addTrack: (group: "video" | "overlay" | "audio") => void;
   getNextAvailableTrack: (group: "video" | "overlay" | "audio") => number;
+  setClipOpacity: (clipId: string, value: number) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -220,7 +238,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     const data = await res.json();
     // data = { previewSessionId, baseUrl, fps }
-   console.log("BACKEND baseUrl:", data.baseUrl);
+   
     // 2️⃣ Create local blob URL for playback
     const videoUrl = URL.createObjectURL(file);
 
@@ -235,6 +253,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   duration: 0,
   trimStart: 0,
   trimEnd: 0,
+  file:file,
   type: "video",
   group: "video",
   trackIndex: get().getNextAvailableTrack("video"),
@@ -455,6 +474,7 @@ uploadAudio: async (file: File) => {
     duration,
     trimStart: 0,
     trimEnd: 0,
+    file:file,
     type: "audio",
     group: "audio",
     trackIndex: get().getNextAvailableTrack("audio"),
@@ -502,5 +522,72 @@ toggleClipMute: (clipId) =>
     // Return last track
     return state.trackCounts[group] - 1;
   },
+  uploadImage: async (file: File) => {
+  if (!file.type.startsWith("image/")) return false;
+
+  const url = URL.createObjectURL(file);
+
+  const clip: TimelineClip = {
+    id: crypto.randomUUID(),
+    name: file.name,
+    src: url,
+    startTime: get().currentTime,
+    duration: 5,
+    trimStart: 0,
+    trimEnd: 0,
+    file:file,
+    type: "image",
+    group: "overlay",
+    trackIndex: get().getNextAvailableTrack("overlay"),
+     opacity: 1
+  };
+
+  get().addClip(clip);
+  return true;
+},addTextOverlay: (text) => {
+  const clip: TimelineClip = {
+    id: crypto.randomUUID(),
+    name: "Text",
+    src: "",
+    startTime: get().currentTime,
+    duration: 5,
+    trimStart: 0,
+    trimEnd: 0,
+    type: "text",
+    group: "overlay",
+    trackIndex: get().getNextAvailableTrack("overlay"),
+    text,
+    fontSize: 48,
+    color: "#ffffff",
+    opacity: 1
+  };
+
+  get().addClip(clip);
+},
+
+addBackgroundOverlay: (color) => {
+  const clip: TimelineClip = {
+    id: crypto.randomUUID(),
+    name: "Background",
+    src: "",
+    startTime: 0,
+    duration: 9999,
+    trimStart: 0,
+    trimEnd: 0,
+    type: "background",
+    group: "overlay",
+    trackIndex: get().getNextAvailableTrack("overlay"),
+    backgroundColor: color,
     
+  };
+
+  get().addClip(clip);
+},
+setClipOpacity: (clipId, value) =>
+  set((state) => ({
+    clips: state.clips.map((c) =>
+      c.id === clipId ? { ...c, opacity: value } : c
+    ),
+  })),
+  
 }));

@@ -11,7 +11,7 @@ import {
 
 export const signup = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, level } = req.body;
 
    
     if (!name || !email || !password) {
@@ -23,7 +23,7 @@ export const signup = async (req, res) => {
       return res.status(409).json({ message: "User already exists" });
     }
 
-    const { user, accessToken, refreshToken } = await signupUser({ name, email, password, device: req.headers["user-agent"] });
+    const { user, accessToken, refreshToken } = await signupUser({ name, email, password, level, device: req.headers["user-agent"] });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,

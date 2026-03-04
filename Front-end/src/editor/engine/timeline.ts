@@ -67,3 +67,17 @@ export function getTotalDuration(clips: TimelineClip[]): number {
     })
   );
 }
+export function getActiveClipsAtTime(
+  clips: TimelineClip[],
+  time: number
+) {
+  return clips.filter((clip) => {
+    const start = clip.startTime + clip.trimStart;
+    const end =
+      clip.startTime +
+      clip.duration -
+      clip.trimEnd;
+
+    return time >= start && time <= end;
+  });
+}

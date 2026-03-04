@@ -2,24 +2,23 @@ import { saveProject,getProjectById } from "../services/project.service.js";
 
 export const saveProjectController = async (req, res) => {
   try {
-    const { projectName, clips, timeline } = req.body;
+   const { projectId,projectName, clips, duration } = req.body;
 
-    if (
-      !projectName ||
-      !Array.isArray(clips) ||
-      clips.length === 0 ||
-      !timeline
-    ) {
-      return res.status(400).json({
-        message: "Invalid project data"
-      });
-    }
+   if (
+  !projectName ||
+  !Array.isArray(clips)
+) {
+  return res.status(400).json({
+    message: "Invalid project data"
+  });
+}
 
     const project = await saveProject({
       userId: req.user._id,
       projectName,
       clips,
-      timeline
+      duration,
+      projectId
     });
 
     res.status(201).json({

@@ -26,24 +26,7 @@ export function useClipActions() {
   /**
    * Duplicate a clip and add it to the end of timeline
    */
-  const duplicateClip = (clipId: string) => {
-    const clip = clips.find((c) => c.id === clipId);
-    if (!clip) return;
-
-    const lastEnd = getTotalDuration(clips);
-
-    addClip({
-      id: crypto.randomUUID(),
-      name: `${clip.name} (copy)`,
-      src: clip.src,
-      startTime: lastEnd,
-      duration: clip.duration,
-      trimStart: clip.trimStart,
-      trimEnd: clip.trimEnd,
-      type: clip.type,
-    });
-  };
-
+ 
   /**
    * Clear clip selection
    */
@@ -58,7 +41,7 @@ export function useClipActions() {
     if (!activeClipId) return null;
     return clips.find((c) => c.id === activeClipId) ?? null;
   };
-
+  
   return {
     // State
     clips,
@@ -75,7 +58,7 @@ export function useClipActions() {
     repositionClip,
     
     // Custom actions
-    duplicateClip,
+    
     clearSelection,
     getActiveClip,
   };

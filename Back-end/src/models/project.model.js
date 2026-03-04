@@ -2,31 +2,53 @@ import mongoose from "mongoose";
 
 const clipSchema = new mongoose.Schema(
   {
-    clipId: {
+    id: { type: String, required: true },
+
+    type: {
       type: String,
+      enum: ["video", "audio", "image", "text", "background"],
       required: true
     },
 
-    sourceUrl: {
+    group: {
       type: String,
+      enum: ["video", "audio", "overlay"],
       required: true
     },
 
-    trim: {
-      start: { type: Number, default: 0 },
-      end: { type: Number } // seconds
-    },
+    trackIndex: { type: Number, required: true },
 
-    volume: {
-      type: Number,
-      default: 1
-    }
+    sourceUrl: { type: String },
+
+    startTime: { type: Number, required: true },
+    duration: { type: Number, required: true },
+
+    trimStart: { type: Number, default: 0 },
+    trimEnd: { type: Number, default: 0 },
+
+    volume: { type: Number, default: 1 },
+    muted: { type: Boolean, default: false },
+
+    opacity: { type: Number, default: 1 },
+
+    // text specific
+    text: { type: String },
+    fontSize: { type: Number },
+    color: { type: String },
+
+    // background specific
+    backgroundColor: { type: String }
   },
   { _id: false }
 );
 
 const projectSchema = new mongoose.Schema(
   {
+    projectId: {
+      type: String,
+      required: true,
+      unique: true
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -40,21 +62,12 @@ const projectSchema = new mongoose.Schema(
 
     clips: {
       type: [clipSchema],
-      required: true
+      default: []
     },
 
-    timeline: {
-      type: Object,
-      required: true
-      /*
-        example:
-        {
-          tracks: [
-            { clipId: "c1", start: 0 },
-            { clipId: "c2", start: 25 }
-          ]
-        }
-      */
+    duration: {
+      type: Number,
+      default: 0
     },
 
     status: {

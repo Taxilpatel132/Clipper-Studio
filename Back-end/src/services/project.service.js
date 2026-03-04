@@ -4,13 +4,21 @@ export const saveProject = async ({
   userId,
   projectName,
   clips,
-  timeline
+  duration,
+  projectId
 }) => {
+   if (projectId) {
+    return await Project.findOneAndUpdate(
+      { _id: projectId, user: userId },
+      { projectName, clips, duration },
+      { new: true }
+    );
+  }
   const project = await Project.create({
     user: userId,
     projectName,
     clips,
-    timeline
+    duration
   });
 
   return project;

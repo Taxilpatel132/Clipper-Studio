@@ -380,7 +380,7 @@ export function useTimelineControls() {
     const playEnd = clip.startTime + clip.duration - clip.trimEnd;
     if (currentTime <= playStart || currentTime >= playEnd) return;
 
-    const splitAtVideoTime = currentTime - playStart;
+    const splitAtVideoTime = clip.trimStart + (currentTime - clip.startTime);
     if (splitAtVideoTime <= 0 || splitAtVideoTime >= clip.duration) return;
 
     const firstClip: TimelineClip = {

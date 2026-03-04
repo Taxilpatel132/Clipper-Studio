@@ -8,8 +8,8 @@ export const checkUserExists = async (email) => {
   return existingUser;
 };
 
-export const signupUser = async ({ name, email, password, device }) => {
-  const user = new User({ name, email, password });
+export const signupUser = async ({ name, email, password, level, device }) => {
+  const user = new User({ name, email, password, level: level || "beginner" });
 
   const { accessToken, refreshToken } = generateTokens(user._id);
 

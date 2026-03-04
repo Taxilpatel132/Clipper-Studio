@@ -7,43 +7,41 @@ import { Button } from "./ui/button";
 
 interface SidebarProps {
   onSelectTool: (tool: string | null) => void;
+  selectedTool?: string;
+
 }
 
 export default function Sidebar({ onSelectTool }: SidebarProps) {
   const tools = [
-    {
-      id: "video",
-      name: "Video",
-      description: "Upload & edit",
-      icon: Video,
-      color: "blue", // #5adaff
-      badge: "Pro"
-    },
-    {
-      id: "audio",
-      name: "Audio", 
-      description: "Sound & music",
-      icon: Music,
-      color: "blue", // #5adaff
-      badge: null
-    },
-    {
-      id: "image",
-      name: "Image",
-      description: "Photos & graphics", 
-      icon: Image,
-      color: "pink", // #ff5af1
-      badge: null
-    },
-    {
-      id: "text",
-      name: "Text",
-      description: "Titles & captions",
-      icon: Type,
-      color: "pink", // #ff5af1
-      badge: "AI"
-    }
-  ];
+  {
+    id: "video",
+    name: "Video",
+    icon: Video,
+    color: "blue",
+    badge: "Pro"
+  },
+  {
+    id: "audio",
+    name: "Audio",
+    icon: Music,
+    color: "blue",
+    badge: null
+  },
+  {
+    id: "text",
+    name: "Text",
+    icon: Type,
+    color: "pink",
+    badge: null
+  },
+  {
+    id: "graphics",   // 🔥 merged
+    name: "Graphics",
+    icon: Image,
+    color: "pink",
+    badge: null
+  }
+];
 
   const getColorClasses = (color: string) => {
     if (color === "blue") {

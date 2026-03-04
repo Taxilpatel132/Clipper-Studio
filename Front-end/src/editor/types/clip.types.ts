@@ -6,7 +6,8 @@ export interface TimelineClip {
   duration: number;
   trimStart: number;
   trimEnd: number;
-  type: "video" | "audio" | "image";
+  type: "video" | "audio" | "image" | "text" | "background";
+  file?: File;
   previewSessionId?: string;
   framesBaseUrl?: string;
   fps?: number;
@@ -15,6 +16,16 @@ export interface TimelineClip {
   // ✅ Group-based hierarchy
   group: "video" | "overlay" | "audio";
   trackIndex: number;
+  // overlay props
+text?: string;
+fontSize?: number;
+color?: string;
+bgColor?: string;
+
+imageFit?: "cover" | "contain";
+
+backgroundColor?: string;
+opacity?: number;
 }
 export interface EditorSnapshot {
   clips: TimelineClip[]

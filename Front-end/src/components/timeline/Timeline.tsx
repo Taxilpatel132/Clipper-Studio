@@ -120,18 +120,20 @@ export default function Timeline() {
           className="relative"
           style={{ width: timelineWidth }}
         >
-          {/* Ruler */}
-          <TimelineRuler
-            duration={duration}
-            currentTime={currentTime}
-            isPlaying={isPlaying}
-            zoom={zoom}
-            scale={TIMELINE_SCALE}
-            dropIndicatorPosition={dropIndicatorPosition}
-            clampTimeToSoftTrim={clampTimeToSoftTrim}
-            onClick={handleTimelineClick}
-            onPlayheadMouseDown={startPlayheadDrag}
-          />
+          {/* Ruler - Sticky at top */}
+          <div className="sticky top-0 z-10 bg-[#0f1629]">
+            <TimelineRuler
+              duration={duration}
+              currentTime={currentTime}
+              isPlaying={isPlaying}
+              zoom={zoom}
+              scale={TIMELINE_SCALE}
+              dropIndicatorPosition={dropIndicatorPosition}
+              clampTimeToSoftTrim={clampTimeToSoftTrim}
+              onClick={handleTimelineClick}
+              onPlayheadMouseDown={startPlayheadDrag}
+            />
+          </div>
 
         {/* Timeline Tracks */}
 <div className="space-y-2">

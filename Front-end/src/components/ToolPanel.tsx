@@ -13,6 +13,7 @@ interface Props {
   onUploadFile: (file: File ) => Promise<void>;
   hasVideo?: boolean;
   onRemoveVideo?: () => void;
+  
 }
 
 export default function ToolPanel({
@@ -23,8 +24,12 @@ export default function ToolPanel({
 }: Props) {
   const clips = useEditorStore((s) => s.clips);
 const uploadAudio = useEditorStore((s) => s.uploadAudio);
+const uploadImage = useEditorStore((s) => s.uploadImage);
+const addTextOverlay = useEditorStore((s) => s.addTextOverlay);
+const addBackgroundOverlay = useEditorStore((s) => s.addBackgroundOverlay);
 const setClipVolume = useEditorStore((s) => s.setClipVolume);
 const toggleClipMute = useEditorStore((s) => s.toggleClipMute);
+const setClipOpacity = useEditorStore((s) => s.setClipOpacity);
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
@@ -206,7 +211,105 @@ const toggleClipMute = useEditorStore((s) => s.toggleClipMute);
     </CardContent>
   </Card>
 )}
-      {currentTool !== "video" && currentTool !== "audio" && (
+     {currentTool === "text" && (
+  <Card className="bg-[#1a1f35] border-white/10">
+    <CardContent className="space-y-4">
+      <CardTitle className="text-[#ff5af1] text-lg">Text</CardTitle>
+
+      <input
+        type="text"
+        placeholder="Enter text"
+        className="w-full p-2 rounded bg-[#0f1629] text-white"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            addTextOverlay((e.target as HTMLInputElement).value);
+            (e.target as HTMLInputElement).value = "";
+          }
+        }}
+      />
+
+     
+      {clips
+  .filter((c) => c.type === "text")
+  .map((clip) => (
+    <div key={clip.id} className="space-y-2">
+      <p className="text-xs text-white/60">Opacity</p>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={clip.opacity ?? 1}
+        onChange={(e) =>
+          setClipOpacity(clip.id, parseFloat(e.target.value))
+        }
+        className="w-full accent-pink-400"
+      />
+    </div>
+  ))}
+    </CardContent>
+  </Card>
+)}
+      {currentTool === "graphics" && (
+  <Card className="bg-[#1a1f35] border-white/10">
+    <CardContent className="space-y-4">
+
+      <CardTitle className="text-[#ff5af1] text-lg">
+        Graphics
+      </CardTitle>
+
+      {/* Upload Image */}
+      <div>
+        <p className="text-sm text-white/60 mb-2">Upload Image</p>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadImage(file);
+          }}
+          className="text-white text-sm"
+        />
+      </div>
+
+      {/* Background Colors */}
+      <div className="space-y-2">
+        <p className="text-sm text-white/60">Background</p>
+
+        <div className="flex gap-2">
+          {["#000000", "#ffffff", "#5adaff", "#ff5af1"].map((color) => (
+            <button
+              key={color}
+              onClick={() => addBackgroundOverlay(color)}
+              className="w-8 h-8 rounded border border-white/20"
+              style={{ background: color }}
+            />
+          ))}
+        </div>
+        {clips
+  .filter((c) => c.type === "image" || c.type === "background")
+  .map((clip) => (
+    <div key={clip.id} className="space-y-2">
+      <p className="text-xs text-white/60">Opacity</p>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={clip.opacity ?? 1}
+        onChange={(e) =>
+          setClipOpacity(clip.id, parseFloat(e.target.value))
+        }
+        className="w-full accent-pink-400"
+      />
+    </div>
+  ))}
+      </div>
+
+    </CardContent>
+  </Card>
+)}
+ {!["video","audio","graphics","text"].includes(currentTool)  && (
         <Card className="bg-[#1a1f35] border-white/10">
           <CardContent className="text-center py-12">
             <CardTitle className="text-[#5adaff] text-lg tracking-wide mb-2">Tools for {currentTool}</CardTitle>
@@ -221,6 +324,7 @@ const toggleClipMute = useEditorStore((s) => s.toggleClipMute);
           </CardContent>
         </Card>
       )}
+
     </div>
   );
 }

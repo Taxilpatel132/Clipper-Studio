@@ -59,3 +59,47 @@ export function usePlaybackState() {
 
   return { isPlaying, currentTime, duration };
 }
+
+
+export function usePlaybackLayers() {
+  const clips = useEditorStore((s) => s.clips);
+  const currentTime = useEditorStore((s) => s.currentTime);
+
+  const activeClips = clips.filter((clip) => {
+    const start = clip.startTime + clip.trimStart;
+    const end = clip.startTime + clip.duration - clip.trimEnd;
+    return currentTime >= start && currentTime <= end;
+  });
+
+  let topVideo: any = null;
+  const audioClips: any[] = [];
+  const overlayClips: any[] = [];
+  const backgroundClips: any[] = [];
+
+  activeClips.forEach((clip) => {
+    if (clip.group === "video") {
+      if (!topVideo || clip.trackIndex > topVideo.trackIndex) {
+        topVideo = clip;
+      }
+    }
+
+    if (clip.group === "audio") {
+      audioClips.push(clip);
+    }
+
+    if (clip.type === "background") {
+      backgroundClips.push(clip);
+    }
+
+    if (clip.group === "overlay" && clip.type !== "background") {
+      overlayClips.push(clip);
+    }
+  });
+
+  return {
+    video: topVideo,
+    audio: audioClips,
+    overlays: overlayClips,
+    backgrounds: backgroundClips,
+  };
+}
