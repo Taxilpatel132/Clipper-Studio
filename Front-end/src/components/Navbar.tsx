@@ -14,14 +14,31 @@ import {
 } from "./ui/dialog";
 import { useEffect, useState, } from "react";
 import { useEditorStore } from "@/editor/store/editor.store";
+import { saveProject } from "@/editor/actions/save.action";
 export default function Navbar() {
+  const [saving, setSaving] = useState(false);
+
+
   const [isExportOpen, setIsExportOpen] = useState(false);
   const undo = useEditorStore((s) => s.undo);
 const redo = useEditorStore((s) => s.redo);
 const canUndo = useEditorStore((s) => s.history.past.length > 0);
 const canRedo = useEditorStore((s) => s.history.future.length > 0);
 
-
+const handleSave = async () => {
+  try {
+    setSaving(true);
+    console.log("Saving project...");
+    await saveProject();
+    console.log("Project saved successfully!");
+    alert("Project saved successfully!");
+  }catch (err) {
+    console.error(err);
+    alert("Failed to save project");
+  } finally {
+    setSaving(false);
+  }
+};
 useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.ctrlKey && e.key.toLowerCase() === "z") {
@@ -145,9 +162,10 @@ useEffect(() => {
             variant="outline" 
             size="sm"
             className="bg-[#ff5af1]/20 text-[#ff5af1] hover:bg-[#ff5af1]/30 border-[#ff5af1]/30"
+            onClick={handleSave} disabled={saving}
           >
             <Save size={16} className="mr-1.5" />
-            Save
+           {saving ? "Saving..." : "Save"}
           </Button>
 
           {/* Download */}

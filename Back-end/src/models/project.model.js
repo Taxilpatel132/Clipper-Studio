@@ -44,11 +44,7 @@ const clipSchema = new mongoose.Schema(
 
 const projectSchema = new mongoose.Schema(
   {
-    projectId: {
-      type: String,
-      required: true,
-      unique: true
-    },
+   
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

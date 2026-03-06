@@ -29,7 +29,9 @@ export default function LoginPage() {
     setError("")
     setIsLoading(true)
     try {
-      await login(email, password)
+      const result = await login(email, password)
+      console.log("Login successful:", result)
+      
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed. Please try again.")
     } finally {

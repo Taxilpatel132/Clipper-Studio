@@ -571,7 +571,7 @@ addBackgroundOverlay: (color) => {
     name: "Background",
     src: "",
     startTime: 0,
-    duration: 9999,
+    duration: 20,
     trimStart: 0,
     trimEnd: 0,
     type: "background",
@@ -589,5 +589,5 @@ setClipOpacity: (clipId, value) =>
       c.id === clipId ? { ...c, opacity: value } : c
     ),
   })),
-  
+
 }));

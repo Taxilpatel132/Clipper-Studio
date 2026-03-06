@@ -11,6 +11,9 @@ import authRoutes from "./routes/auth.routes.js";
 import projectRoutes from "./routes/project.routes.js";
 import renderRoutes from "./routes/render.routes.js";
 import frameRoutes from "./routes/frame.routes.js";
+import mediaRoutes from "./routes/media.routes.js";
+
+
 //import videoRoutes from "./routes/video.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -34,6 +37,7 @@ app.use(
   "/frames",
   express.static(path.join(__dirname, "../outputs/frames"))
 );
+app.use("/api/media", mediaRoutes);
 //app.use("/api/video", videoRoutes);
 
 
