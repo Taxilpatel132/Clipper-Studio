@@ -63,6 +63,11 @@ export async function saveProject() {
 
   const data = await res.json();
 
+  // Update the store with the persisted projectId so subsequent saves are updates
+  if (data.projectId) {
+    useEditorStore.setState({ projectId: data.projectId });
+  }
+
   console.log("Saved:", data);
 
   return data;

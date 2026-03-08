@@ -1,4 +1,9 @@
-import { saveProject,getProjectById } from "../services/project.service.js";
+import {
+  saveProject,
+  getProjectById,
+  getAllProjects,
+  deleteProject
+} from "../services/project.service.js";
 
 export const saveProjectController = async (req, res) => {
   try {
@@ -56,6 +61,44 @@ export const getProjectController = async (req, res) => {
     console.error(err);
     res.status(500).json({
       message: "Failed to load project"
+    });
+  }
+};
+
+
+export const getAllProjectsController = async (req, res) => {
+  try {
+    const projects = await getAllProjects(req.user._id);
+    console.log("Projects fetched:", projects);
+    res.status(200).json({ projects });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Failed to fetch projects"
+    });
+  }
+};
+
+
+export const deleteProjectController = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const deleted = await deleteProject(projectId, req.user._id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        message: "Project not found"
+      });
+    }
+
+    res.status(200).json({
+      message: "Project deleted successfully"
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Failed to delete project"
     });
   }
 };

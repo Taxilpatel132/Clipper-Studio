@@ -6,7 +6,7 @@ const router = Router();
 const upload = multer({
   dest: "uploads/temp" // temporary uploaded videos
 });
-router.post("/:projectId/render", protect, renderProjectController);
+
 
 router.post('/upload-preview',
   upload.single("video"),

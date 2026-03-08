@@ -1,10 +1,21 @@
 "use client";
- 
-import { useRouter } from "next/navigation"
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
- 
-   const router = useRouter();
-   router.push("/edit")
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (user) {
+      router.replace("/dashboard");
+    } else {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
+
+  return null;
 }

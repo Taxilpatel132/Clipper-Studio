@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -22,29 +23,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Loader2,
 } from "lucide-react"
 
-/* ── Demo data ── */
-const INITIAL_PROJECTS = [
-  { id: "1",  name: "Product Launch Ad",       duration: "0:32",  sizeMb: 48,  color: "from-violet-600 to-indigo-600" },
-  { id: "2",  name: "Tutorial Episode 1",      duration: "5:14",  sizeMb: 320, color: "from-cyan-600 to-blue-600" },
-  { id: "3",  name: "Instagram Reel",          duration: "0:15",  sizeMb: 12,  color: "from-pink-600 to-rose-600" },
-  { id: "4",  name: "Company Intro",           duration: "1:45",  sizeMb: 156, color: "from-emerald-600 to-teal-600" },
-  { id: "5",  name: "Wedding Highlights",      duration: "3:22",  sizeMb: 245, color: "from-amber-600 to-orange-600" },
-  { id: "6",  name: "Music Video Draft",       duration: "4:01",  sizeMb: 410, color: "from-fuchsia-600 to-purple-600" },
-  { id: "7",  name: "Podcast Clip #12",        duration: "1:08",  sizeMb: 65,  color: "from-sky-600 to-cyan-600" },
-  { id: "8",  name: "Travel Vlog - Paris",     duration: "8:42",  sizeMb: 580, color: "from-rose-600 to-pink-600" },
-  { id: "9",  name: "Fitness Montage",         duration: "2:17",  sizeMb: 190, color: "from-lime-600 to-green-600" },
-  { id: "10", name: "Real Estate Walkthrough", duration: "6:33",  sizeMb: 475, color: "from-indigo-600 to-violet-600" },
-  { id: "11", name: "YouTube Shorts #5",       duration: "0:58",  sizeMb: 34,  color: "from-red-600 to-orange-600" },
-  { id: "12", name: "Birthday Recap",          duration: "2:45",  sizeMb: 210, color: "from-teal-600 to-emerald-600" },
-  { id: "13", name: "Client Testimonial",      duration: "1:22",  sizeMb: 88,  color: "from-blue-600 to-indigo-600" },
-  { id: "14", name: "Cooking Tutorial",        duration: "7:10",  sizeMb: 520, color: "from-orange-600 to-amber-600" },
-  { id: "15", name: "Gaming Highlights",       duration: "3:55",  sizeMb: 310, color: "from-purple-600 to-fuchsia-600" },
-  { id: "16", name: "TikTok Compilation",      duration: "0:47",  sizeMb: 28,  color: "from-cyan-600 to-sky-600" },
-  { id: "17", name: "Conference Talk Edit",    duration: "12:30", sizeMb: 680, color: "from-slate-600 to-zinc-600" },
-  { id: "18", name: "Drone Footage - Beach",   duration: "4:18",  sizeMb: 390, color: "from-sky-600 to-blue-600" },
-]
+/* ── Types ── */
+interface Project {
+  id: string
+  name: string
+  duration: string
+  sizeMb: number
+  color: string
+  updatedAt?: string
+}
 
 const TOTAL_MEMORY_MB = 5120 // 5 GB quota
 const ITEMS_PER_PAGE = 8
@@ -59,18 +49,88 @@ const GRADIENTS = [
   "from-fuchsia-500 to-purple-500",
 ]
 
+const CARD_COLORS = [
+  "from-violet-600 to-indigo-600",
+  "from-cyan-600 to-blue-600",
+  "from-pink-600 to-rose-600",
+  "from-emerald-600 to-teal-600",
+  "from-amber-600 to-orange-600",
+  "from-fuchsia-600 to-purple-600",
+  "from-sky-600 to-cyan-600",
+  "from-rose-600 to-pink-600",
+  "from-lime-600 to-green-600",
+  "from-indigo-600 to-violet-600",
+]
+
 function getAvatarGradient(name: string) {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return GRADIENTS[Math.abs(hash) % GRADIENTS.length]
 }
 
+function getCardColor(id: string) {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  return CARD_COLORS[Math.abs(hash) % CARD_COLORS.length]
+}
+
+/** Convert seconds → "M:SS" */
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return "0:00"
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return `${m}:${s.toString().padStart(2, "0")}`
+}
+
+/** Rough size estimate from clip count (since real file size isn't stored) */
+function estimateSizeMb(clips: any[]): number {
+  if (!clips || clips.length === 0) return 0
+  return clips.reduce((sum: number, c: any) => sum + Math.round((c.duration || 0) * 2), 0)
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth()
+  const router = useRouter()
   const [search, setSearch] = useState("")
   const [view, setView] = useState<"grid" | "list">("grid")
   const [page, setPage] = useState(1)
-  const [projects, setProjects] = useState(INITIAL_PROJECTS)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loadingProjects, setLoadingProjects] = useState(true)
+
+  // Fetch projects from backend
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await fetch("http://localhost:5000/api/projects", {
+          headers: {
+            authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+          credentials: "include",
+        })
+
+        if (!res.ok) throw new Error("Failed to fetch projects")
+
+        const data = await res.json()
+
+        const mapped: Project[] = (data.projects ?? []).map((p: any) => ({
+          id: p._id,
+          name: p.projectName,
+          duration: formatDuration(p.duration),
+          sizeMb: estimateSizeMb(p.clips),
+          color: getCardColor(p._id),
+          updatedAt: p.updatedAt,
+        }))
+
+        setProjects(mapped)
+      } catch (err) {
+        console.error("Failed to load projects:", err)
+      } finally {
+        setLoadingProjects(false)
+      }
+    }
+
+    fetchProjects()
+  }, [])
 
   const firstLetter = user?.name?.charAt(0)?.toUpperCase() || "U"
   const avatarGradient = useMemo(() => getAvatarGradient(user?.name || "User"), [user?.name])
@@ -92,12 +152,36 @@ export default function DashboardPage() {
   const memoryPercent = Math.round((usedMemoryMb / TOTAL_MEMORY_MB) * 100)
   const remainingMb = TOTAL_MEMORY_MB - usedMemoryMb
 
-  const handleDelete = (id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id))
-    // If deleting leaves current page empty, go back one page
-    const newTotal = projects.length - 1
-    const newTotalPages = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1
-    if (page > newTotalPages) setPage(newTotalPages)
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/projects/${id}`, {
+        method: "DELETE",
+        headers: {
+          authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        credentials: "include",
+      })
+
+      if (!res.ok) throw new Error("Delete failed")
+
+      setProjects((prev) => prev.filter((p) => p.id !== id))
+      // If deleting leaves current page empty, go back one page
+      const newTotal = projects.length - 1
+      const newTotalPages = Math.ceil(newTotal / ITEMS_PER_PAGE) || 1
+      if (page > newTotalPages) setPage(newTotalPages)
+    } catch (err) {
+      console.error("Failed to delete project:", err)
+      alert("Failed to delete project")
+    }
+  }
+
+  const handleNewProject = () => {
+    // Navigate to unsaved editor — user can save later to get an ID
+    router.push("/edit")
+  }
+
+  const handleOpenProject = (id: string) => {
+    router.push(`/edit/${id}`)
   }
 
   return (
@@ -175,6 +259,7 @@ export default function DashboardPage() {
 
             <Button
               size="sm"
+              onClick={handleNewProject}
               className="bg-[#5adaff] text-[#0a0f24] font-semibold hover:bg-[#5adaff]/80 hover:shadow-[0_0_15px_rgba(90,218,255,0.25)] gap-1.5"
             >
               <Plus className="size-4" />
@@ -219,7 +304,12 @@ export default function DashboardPage() {
 
       {/* ── Project Cards ── */}
       <main className="p-6">
-        {filteredProjects.length === 0 ? (
+        {loadingProjects ? (
+          <div className="flex flex-col items-center justify-center py-24 text-[#5adaff]/40">
+            <Loader2 className="size-10 mb-4 animate-spin" />
+            <p className="text-lg">Loading projects…</p>
+          </div>
+        ) : filteredProjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-[#5adaff]/40">
             <FolderOpen className="size-16 mb-4" />
             <p className="text-lg">No projects found</p>
@@ -230,6 +320,7 @@ export default function DashboardPage() {
             {paginatedProjects.map((project) => (
               <div
                 key={project.id}
+                onClick={() => handleOpenProject(project.id)}
                 className="group rounded-xl border border-[#5adaff]/10 bg-[#0f1629] overflow-hidden hover:border-[#5adaff]/30 hover:shadow-[0_0_25px_rgba(90,218,255,0.06)] transition-all cursor-pointer"
               >
                 {/* Thumbnail */}
@@ -274,6 +365,7 @@ export default function DashboardPage() {
             {paginatedProjects.map((project) => (
               <div
                 key={project.id}
+                onClick={() => handleOpenProject(project.id)}
                 className="flex items-center gap-4 rounded-lg border border-[#5adaff]/10 bg-[#0f1629] p-3 hover:border-[#5adaff]/30 hover:shadow-[0_0_25px_rgba(90,218,255,0.06)] transition-all cursor-pointer"
               >
                 {/* Mini thumbnail */}

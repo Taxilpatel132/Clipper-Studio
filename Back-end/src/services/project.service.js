@@ -31,3 +31,17 @@ export const getProjectById = async (projectId, userId) => {
 
   return project;
 };
+
+export const getAllProjects = async (userId) => {
+  console.log("Fetching projects for user:", userId);
+  return await Project.find({ user: userId })
+    .sort({ updatedAt: -1 })
+    .lean();
+};
+
+export const deleteProject = async (projectId, userId) => {
+  return await Project.findOneAndDelete({
+    _id: projectId,
+    user: userId
+  });
+};
