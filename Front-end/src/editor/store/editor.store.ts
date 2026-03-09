@@ -101,6 +101,7 @@ toggleClipMute: (clipId: string) => void
   addTrack: (group: "video" | "overlay" | "audio") => void;
   getNextAvailableTrack: (group: "video" | "overlay" | "audio") => number;
   setClipOpacity: (clipId: string, value: number) => void;
+  removeClip: (clipId: string) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -589,5 +590,28 @@ setClipOpacity: (clipId, value) =>
       c.id === clipId ? { ...c, opacity: value } : c
     ),
   })),
+
+removeClip: (clipId) => {
+  const state = get();
+  state.pushToHistory();
+
+  const clip = state.clips.find((c) => c.id === clipId);
+  if (clip && clip.src.startsWith("blob:")) {
+    URL.revokeObjectURL(clip.src);
+  }
+
+  set((s) => {
+    const remaining = s.clips.filter((c) => c.id !== clipId);
+    const duration = remaining.length
+      ? Math.max(...remaining.map((c) => c.startTime + c.duration))
+      : 0;
+
+    return {
+      clips: remaining,
+      activeClipId: s.activeClipId === clipId ? null : s.activeClipId,
+      duration,
+    };
+  });
+},
 
 }));

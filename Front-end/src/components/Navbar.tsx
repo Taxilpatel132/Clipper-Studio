@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Navbar() {
   const [saving, setSaving] = useState(false);
+  const [isRendering,setIsRendering] = useState(false)
   const router = useRouter();
   const { user } = useAuth();
 
@@ -39,6 +40,58 @@ const handleSave = async () => {
     setSaving(false);
   }
 };
+const handleDownload = async ()=>{
+
+ setIsRendering(true)
+
+ try{
+   
+
+  const state = useEditorStore.getState()
+  const projectId = state.projectId
+
+  if(!projectId){
+    alert("Please save project first")
+    return
+  }
+
+ 
+
+    const res = await fetch(
+      `http://localhost:5000/api/render/download/${projectId}`,
+      {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        }
+      }
+    )
+
+    const blob = await res.blob()
+
+    const url = window.URL.createObjectURL(blob)
+
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "clipper-export.mp4"
+    document.body.appendChild(a)
+
+    a.click()
+
+    a.remove()
+
+  }catch(err){
+    console.error(err)
+    alert("Download failed")
+  
+
+
+ }finally{
+   setIsRendering(false)
+ }
+
+}
 useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.ctrlKey && e.key.toLowerCase() === "z") {
@@ -49,6 +102,16 @@ useEffect(() => {
     if (e.ctrlKey && e.key.toLowerCase() === "y") {
       e.preventDefault();
       redo();
+    }
+
+    if (e.key === "Delete" || e.key === "Backspace") {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
+      const { activeClipId, removeClip } = useEditorStore.getState();
+      if (activeClipId) {
+        e.preventDefault();
+        removeClip(activeClipId);
+      }
     }
   };
 
@@ -127,6 +190,7 @@ useEffect(() => {
               variant="outline"
               size="sm"
               className="bg-[#5adaff]/20 text-[#5adaff] hover:bg-[#5adaff]/30 border-[#5adaff]/30"
+             onClick={handleDownload}
             >
               <Download size={16} className="mr-1.5" />
               Download

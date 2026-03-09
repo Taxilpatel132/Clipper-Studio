@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { renderProjectController,uploadPreviewFramesController } from "../controllers/render.controller.js";
+import { uploadPreviewFramesController,downloadProject } from "../controllers/render.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import multer from 'multer';
 const router = Router();
@@ -12,4 +12,5 @@ router.post('/upload-preview',
   upload.single("video"),
   uploadPreviewFramesController);
 
+router.get("/download/:projectId", protect,downloadProject)
 export default router;

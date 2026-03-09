@@ -159,15 +159,26 @@ const setClipOpacity = useEditorStore((s) => s.setClipOpacity);
       </CardTitle>
 
       {/* Upload */}
-      <input
-        type="file"
-        accept="audio/*"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) uploadAudio(file);
-        }}
-        className="text-white text-sm"
-      />
+      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-[#0f1629] border border-white/10 hover:border-[#5adaff]/40 transition-all group">
+        <input
+          type="file"
+          accept="audio/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadAudio(file);
+          }}
+          className="hidden"
+        />
+        <div className="p-2 bg-[#5adaff]/20 rounded-xl group-hover:bg-[#5adaff]/30 transition-all border border-[#5adaff]/40">
+          <Upload size={18} className="text-[#5adaff]" />
+        </div>
+        <div>
+          <div className="font-medium text-white text-sm">Upload Audio</div>
+          <div className="text-xs text-white/50 mt-0.5">
+            <Badge variant="outline" className="bg-[#5adaff]/10 text-[#5adaff] border-[#5adaff]/30 text-xs">MP3, WAV, OGG</Badge>
+          </div>
+        </div>
+      </label>
 
       {/* Audio List */}
       <div className="space-y-3">
@@ -259,8 +270,7 @@ const setClipOpacity = useEditorStore((s) => s.setClipOpacity);
       </CardTitle>
 
       {/* Upload Image */}
-      <div>
-        <p className="text-sm text-white/60 mb-2">Upload Image</p>
+      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-[#0f1629] border border-white/10 hover:border-[#ff5af1]/40 transition-all group">
         <input
           type="file"
           accept="image/*"
@@ -268,9 +278,18 @@ const setClipOpacity = useEditorStore((s) => s.setClipOpacity);
             const file = e.target.files?.[0];
             if (file) uploadImage(file);
           }}
-          className="text-white text-sm"
+          className="hidden"
         />
-      </div>
+        <div className="p-2 bg-[#ff5af1]/20 rounded-xl group-hover:bg-[#ff5af1]/30 transition-all border border-[#ff5af1]/40">
+          <Upload size={18} className="text-[#ff5af1]" />
+        </div>
+        <div>
+          <div className="font-medium text-white text-sm">Upload Image</div>
+          <div className="text-xs text-white/50 mt-0.5">
+            <Badge variant="outline" className="bg-[#ff5af1]/10 text-[#ff5af1] border-[#ff5af1]/30 text-xs">PNG, JPG, SVG</Badge>
+          </div>
+        </div>
+      </label>
 
       {/* Background Colors */}
       <div className="space-y-2">
