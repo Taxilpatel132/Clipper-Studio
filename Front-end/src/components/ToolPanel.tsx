@@ -1,12 +1,14 @@
 "use client";
 
-import { Upload, Sparkle, ChevronRight, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Upload, Sparkle, ChevronRight, Trash2, Type } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { useEditorStore } from "@/editor/store/editor.store";
+import type { TimelineClip } from "@/editor/types";
 
 interface Props {
   selectedTool: string;
@@ -223,43 +225,11 @@ const setClipOpacity = useEditorStore((s) => s.setClipOpacity);
   </Card>
 )}
      {currentTool === "text" && (
-  <Card className="bg-[#1a1f35] border-white/10">
-    <CardContent className="space-y-4">
-      <CardTitle className="text-[#ff5af1] text-lg">Text</CardTitle>
-
-      <input
-        type="text"
-        placeholder="Enter text"
-        className="w-full p-2 rounded bg-[#0f1629] text-white"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            addTextOverlay((e.target as HTMLInputElement).value);
-            (e.target as HTMLInputElement).value = "";
-          }
-        }}
-      />
-
-     
-      {clips
-  .filter((c) => c.type === "text")
-  .map((clip) => (
-    <div key={clip.id} className="space-y-2">
-      <p className="text-xs text-white/60">Opacity</p>
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={clip.opacity ?? 1}
-        onChange={(e) =>
-          setClipOpacity(clip.id, parseFloat(e.target.value))
-        }
-        className="w-full accent-pink-400"
-      />
-    </div>
-  ))}
-    </CardContent>
-  </Card>
+  <TextToolPanel
+    clips={clips}
+    addTextOverlay={addTextOverlay}
+    setClipOpacity={setClipOpacity}
+  />
 )}
       {currentTool === "graphics" && (
   <Card className="bg-[#1a1f35] border-white/10">
@@ -345,5 +315,152 @@ const setClipOpacity = useEditorStore((s) => s.setClipOpacity);
       )}
 
     </div>
+  );
+}
+
+const TEXT_COLORS = [
+  "#ffffff", "#000000", "#5adaff", "#ff5af1",
+  "#ff4444", "#44ff44", "#ffaa00", "#aa44ff",
+];
+
+const FONT_SIZES = [24, 36, 48, 64, 80, 96];
+
+function TextToolPanel({
+  clips,
+  addTextOverlay,
+  setClipOpacity,
+}: {
+  clips: TimelineClip[];
+  addTextOverlay: (text: string, color?: string, fontSize?: number) => void;
+  setClipOpacity: (clipId: string, value: number) => void;
+}) {
+  const [textValue, setTextValue] = useState("");
+  const [selectedColor, setSelectedColor] = useState("#ffffff");
+  const [selectedSize, setSelectedSize] = useState(48);
+
+  const handleAdd = () => {
+    if (!textValue.trim()) return;
+    addTextOverlay(textValue.trim(), selectedColor, selectedSize);
+    setTextValue("");
+  };
+
+  return (
+    <Card className="bg-[#1a1f35] border-white/10">
+      <CardContent className="space-y-4">
+        <CardTitle className="text-[#ff5af1] text-lg">Text</CardTitle>
+
+        {/* Text input */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Enter text..."
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAdd();
+            }}
+            className="flex-1 px-3 py-2 rounded-lg bg-[#0f1629] text-white border border-white/10 focus:border-[#ff5af1]/60 focus:outline-none transition-colors placeholder:text-white/30"
+          />
+          <Button
+            onClick={handleAdd}
+            disabled={!textValue.trim()}
+            className="bg-[#ff5af1]/20 hover:bg-[#ff5af1]/30 text-[#ff5af1] border border-[#ff5af1]/40 disabled:opacity-40"
+            variant="outline"
+            size="icon"
+          >
+            <Type size={16} />
+          </Button>
+        </div>
+
+        {/* Color picker */}
+        <div className="space-y-2">
+          <p className="text-xs text-white/60">Text Color</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {TEXT_COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => setSelectedColor(color)}
+                className="w-7 h-7 rounded-full border-2 transition-all"
+                style={{
+                  background: color,
+                  borderColor: selectedColor === color ? "#ff5af1" : "rgba(255,255,255,0.15)",
+                  transform: selectedColor === color ? "scale(1.2)" : "scale(1)",
+                }}
+              />
+            ))}
+            <label className="w-7 h-7 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-[#ff5af1]/60 transition-all overflow-hidden relative">
+              <span className="text-white/40 text-xs">+</span>
+              <input
+                type="color"
+                value={selectedColor}
+                onChange={(e) => setSelectedColor(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Font size */}
+        <div className="space-y-2">
+          <p className="text-xs text-white/60">Font Size</p>
+          <div className="flex gap-2 flex-wrap">
+            {FONT_SIZES.map((size) => (
+              <button
+                key={size}
+                onClick={() => setSelectedSize(size)}
+                className="px-2.5 py-1 rounded text-xs font-medium transition-all border"
+                style={{
+                  background: selectedSize === size ? "rgba(255,90,241,0.25)" : "rgba(15,22,41,1)",
+                  borderColor: selectedSize === size ? "rgba(255,90,241,0.5)" : "rgba(255,255,255,0.1)",
+                  color: selectedSize === size ? "#ff5af1" : "rgba(255,255,255,0.6)",
+                }}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Preview */}
+        {textValue.trim() && (
+          <div className="p-3 rounded-lg bg-[#0f1629] border border-white/10">
+            <p className="text-xs text-white/40 mb-2">Preview</p>
+            <p
+              style={{ color: selectedColor, fontSize: `${Math.min(selectedSize, 32)}px` }}
+              className="font-medium truncate"
+            >
+              {textValue}
+            </p>
+          </div>
+        )}
+
+        {/* Existing text clips */}
+        {clips
+          .filter((c) => c.type === "text")
+          .map((clip) => (
+            <div key={clip.id} className="p-3 rounded-lg bg-[#0f1629] border border-white/10 space-y-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full inline-block"
+                  style={{ background: clip.color || "#fff" }}
+                />
+                <span className="text-sm text-white truncate">{clip.text}</span>
+              </div>
+              <p className="text-xs text-white/60">Opacity</p>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={clip.opacity ?? 1}
+                onChange={(e) =>
+                  setClipOpacity(clip.id, parseFloat(e.target.value))
+                }
+                className="w-full accent-pink-400"
+              />
+            </div>
+          ))}
+      </CardContent>
+    </Card>
   );
 }

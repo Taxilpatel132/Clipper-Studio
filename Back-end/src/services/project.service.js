@@ -45,3 +45,11 @@ export const deleteProject = async (projectId, userId) => {
     user: userId
   });
 };
+
+export const renameProject = async (projectId, userId, newName) => {
+  return await Project.findOneAndUpdate(
+    { _id: projectId, user: userId },
+    { projectName: newName },
+    { new: true }
+  );
+};

@@ -79,7 +79,7 @@ redo: () => void
   setTrimStart: (clipId: string, value: number) => void;
 setTrimEnd: (clipId: string, value: number) => void;
 uploadImage: (file: File) => Promise<boolean>;
-addTextOverlay: (text: string) => void;
+addTextOverlay: (text: string, color?: string, fontSize?: number) => void;
 addBackgroundOverlay: (color: string) => void;
 mode: "idle" | "trimming" | "dragging";
 
@@ -545,7 +545,7 @@ toggleClipMute: (clipId) =>
 
   get().addClip(clip);
   return true;
-},addTextOverlay: (text) => {
+},addTextOverlay: (text, color = "#ffffff", fontSize = 48) => {
   const clip: TimelineClip = {
     id: crypto.randomUUID(),
     name: "Text",
@@ -558,8 +558,8 @@ toggleClipMute: (clipId) =>
     group: "overlay",
     trackIndex: get().getNextAvailableTrack("overlay"),
     text,
-    fontSize: 48,
-    color: "#ffffff",
+    fontSize,
+    color,
     opacity: 1
   };
 

@@ -70,8 +70,12 @@ const projectSchema = new mongoose.Schema(
       type: String,
       enum: ["draft", "rendering", "completed"],
       default: "draft"
-    }
+    },
+    projectSize: 
+    { type: Number, default: 0 }
+    
   },
+   
   { timestamps: true }
 );
 

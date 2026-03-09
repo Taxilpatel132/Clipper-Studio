@@ -2,7 +2,8 @@ import {
   saveProject,
   getProjectById,
   getAllProjects,
-  deleteProject
+  deleteProject,
+  renameProject
 } from "../services/project.service.js";
 
 export const saveProjectController = async (req, res) => {
@@ -69,7 +70,7 @@ export const getProjectController = async (req, res) => {
 export const getAllProjectsController = async (req, res) => {
   try {
     const projects = await getAllProjects(req.user._id);
-    console.log("Projects fetched:", projects);
+   
     res.status(200).json({ projects });
   } catch (err) {
     console.error(err);
@@ -99,6 +100,41 @@ export const deleteProjectController = async (req, res) => {
     console.error(err);
     res.status(500).json({
       message: "Failed to delete project"
+    });
+  }
+};
+
+export const renameProjectController = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { projectName } = req.body;
+
+    if (!projectName || !projectName.trim()) {
+      return res.status(400).json({
+        message: "Project name is required"
+      });
+    }
+
+    const project = await renameProject(
+      projectId,
+      req.user._id,
+      projectName.trim()
+    );
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found"
+      });
+    }
+
+    res.status(200).json({
+      message: "Project renamed successfully",
+      projectName: project.projectName
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Failed to rename project"
     });
   }
 };

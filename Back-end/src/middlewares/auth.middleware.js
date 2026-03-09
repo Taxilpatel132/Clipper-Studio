@@ -6,7 +6,7 @@ export const protect = async (req, res, next) => {
     /* 1️⃣ Get Authorization header */
     const authHeader = req.headers.authorization;
     
-    console.log("Auth Header:", authHeader); // Debug log
+    // console.log("Auth Header:", authHeader); // Debug log
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         message: "Access token missing"

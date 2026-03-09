@@ -24,6 +24,9 @@ import {
   ChevronRight,
   Trash2,
   Loader2,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react"
 
 /* ── Types ── */
@@ -172,6 +175,40 @@ export default function DashboardPage() {
     } catch (err) {
       console.error("Failed to delete project:", err)
       alert("Failed to delete project")
+    }
+  }
+
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
+
+  const handleRename = async (id: string) => {
+    const trimmed = renameValue.trim()
+    if (!trimmed) {
+      setRenamingId(null)
+      return
+    }
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/projects/${id}/rename`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({ projectName: trimmed }),
+      })
+
+      if (!res.ok) throw new Error("Rename failed")
+
+      setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, name: trimmed } : p))
+      )
+    } catch (err) {
+      console.error("Failed to rename project:", err)
+      alert("Failed to rename project")
+    } finally {
+      setRenamingId(null)
     }
   }
 
@@ -334,16 +371,51 @@ export default function DashboardPage() {
                 {/* Info */}
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-white truncate">{project.name}</h3>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(project.id) }}
-                      className="text-red-400/50 hover:text-red-400 hover:bg-red-400/10 shrink-0 ml-2"
-                      aria-label="Delete project"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    {renamingId === project.id ? (
+                      <form
+                        className="flex items-center gap-1 flex-1 min-w-0"
+                        onSubmit={(e) => { e.preventDefault(); handleRename(project.id) }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Escape") setRenamingId(null) }}
+                          className="h-7 text-sm bg-[#0a0f24] border-[#5adaff]/30 text-white px-2"
+                        />
+                        <Button type="submit" variant="ghost" size="icon-sm" className="text-green-400 hover:bg-green-400/10 shrink-0">
+                          <Check className="size-3.5" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => setRenamingId(null)} className="text-red-400 hover:bg-red-400/10 shrink-0">
+                          <X className="size-3.5" />
+                        </Button>
+                      </form>
+                    ) : (
+                      <>
+                        <h3 className="font-semibold text-white truncate">{project.name}</h3>
+                        <div className="flex items-center gap-0.5 shrink-0 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => { e.stopPropagation(); setRenamingId(project.id); setRenameValue(project.name) }}
+                            className="text-[#5adaff]/50 hover:text-[#5adaff] hover:bg-[#5adaff]/10"
+                            aria-label="Rename project"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(project.id) }}
+                            className="text-red-400/50 hover:text-red-400 hover:bg-red-400/10"
+                            aria-label="Delete project"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-xs text-[#5adaff]/50">
                     <span className="flex items-center gap-1">
@@ -375,7 +447,29 @@ export default function DashboardPage() {
 
                 {/* Name */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white truncate">{project.name}</h3>
+                  {renamingId === project.id ? (
+                    <form
+                      className="flex items-center gap-1"
+                      onSubmit={(e) => { e.preventDefault(); handleRename(project.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Escape") setRenamingId(null) }}
+                        className="h-7 text-sm bg-[#0a0f24] border-[#5adaff]/30 text-white px-2"
+                      />
+                      <Button type="submit" variant="ghost" size="icon-sm" className="text-green-400 hover:bg-green-400/10 shrink-0">
+                        <Check className="size-3.5" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => setRenamingId(null)} className="text-red-400 hover:bg-red-400/10 shrink-0">
+                        <X className="size-3.5" />
+                      </Button>
+                    </form>
+                  ) : (
+                    <h3 className="font-semibold text-white truncate">{project.name}</h3>
+                  )}
                 </div>
 
                 {/* Duration */}
@@ -389,6 +483,19 @@ export default function DashboardPage() {
                   <HardDrive className="size-3" />
                   {project.sizeMb} MB
                 </span>
+
+                {/* Rename */}
+                {renamingId !== project.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={(e) => { e.stopPropagation(); setRenamingId(project.id); setRenameValue(project.name) }}
+                    className="text-[#5adaff]/50 hover:text-[#5adaff] hover:bg-[#5adaff]/10 shrink-0"
+                    aria-label="Rename project"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
 
                 {/* Delete */}
                 <Button

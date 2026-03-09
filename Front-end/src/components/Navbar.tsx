@@ -1,6 +1,6 @@
 "use client";
 
-import { Undo2, Redo2, Save, Download, LogIn, UserPlus } from "lucide-react";
+import { Undo2, Redo2, Save, Download, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -131,6 +131,18 @@ useEffect(() => {
         <span className="hidden md:inline text-xs text-white/30 ml-2 italic">
           Cut. Create. Conquer.
         </span>
+
+        {user && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/dashboard")}
+            className="ml-3 text-[#5adaff]/70 hover:text-[#5adaff] hover:bg-[#5adaff]/10 gap-1.5"
+          >
+            <LayoutDashboard size={16} />
+            Dashboard
+          </Button>
+        )}
       </div>
 
       {user ? (
