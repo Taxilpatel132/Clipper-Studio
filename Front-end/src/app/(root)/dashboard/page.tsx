@@ -36,6 +36,7 @@ interface Project {
   duration: string
   sizeMb: number
   color: string
+  thumbnailUrl?: string | null
   updatedAt?: string
 }
 
@@ -104,7 +105,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchProjects() {
       try {
-        const res = await fetch("http://localhost:5000/api/projects", {
+        const res = await fetch("http://localhost:5000/api/projects/thumbnails", {
           headers: {
             authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
@@ -119,8 +120,9 @@ export default function DashboardPage() {
           id: p._id,
           name: p.projectName,
           duration: formatDuration(p.duration),
-          sizeMb: estimateSizeMb(p.clips),
+          sizeMb: typeof p.sizeMb === "number" ? p.sizeMb : estimateSizeMb(p.clips),
           color: getCardColor(p._id),
+          thumbnailUrl: p.thumbnailUrl,
           updatedAt: p.updatedAt,
         }))
 
@@ -362,10 +364,19 @@ export default function DashboardPage() {
               >
                 {/* Thumbnail */}
                 <div className={`relative aspect-video bg-linear-to-br ${project.color} flex items-center justify-center`}>
+                  {project.thumbnailUrl ? (
+                    <img
+                      src={project.thumbnailUrl}
+                      alt={`${project.name} thumbnail`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="relative text-white/90 font-bold text-xl tracking-widest">
+                      ▶
+                    </span>
+                  )}
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-                  <span className="relative text-white/90 font-bold text-xl tracking-widest">
-                    ▶
-                  </span>
                 </div>
 
                 {/* Info */}
@@ -442,7 +453,16 @@ export default function DashboardPage() {
               >
                 {/* Mini thumbnail */}
                 <div className={`size-12 rounded-lg bg-linear-to-br ${project.color} flex items-center justify-center shrink-0`}>
-                  <span className="text-white/90 text-xs font-bold">▶</span>
+                  {project.thumbnailUrl ? (
+                    <img
+                      src={project.thumbnailUrl}
+                      alt={`${project.name} thumbnail`}
+                      className="size-12 rounded-lg object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-white/90 text-xs font-bold">▶</span>
+                  )}
                 </div>
 
                 {/* Name */}

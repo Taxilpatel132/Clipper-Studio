@@ -2,6 +2,7 @@ import {
   saveProject,
   getProjectById,
   getAllProjects,
+  getAllProjectsWithThumbnails,
   deleteProject,
   renameProject
 } from "../services/project.service.js";
@@ -76,6 +77,19 @@ export const getAllProjectsController = async (req, res) => {
     console.error(err);
     res.status(500).json({
       message: "Failed to fetch projects"
+    });
+  }
+};
+
+export const getProjectThumbnailsController = async (req, res) => {
+  try {
+    const projects = await getAllProjectsWithThumbnails(req.user._id);
+
+    res.status(200).json({ projects });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Failed to fetch project thumbnails"
     });
   }
 };
