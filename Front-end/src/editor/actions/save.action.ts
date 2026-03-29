@@ -2,6 +2,9 @@ import { uploadFile } from "@/editor/api/media";
 import { useEditorStore } from "@/editor/store/editor.store";
 
 export async function saveProject() {
+  if(!localStorage.getItem("accessToken")) {
+    throw new Error("User not authenticated");
+  }
   const state = useEditorStore.getState();
 
   const uploadedClips = await Promise.all(
